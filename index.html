@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout-Timer App</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            height: 100vh;
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            background-color: black;
+            color: lightgray;
+            text-align: center;
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 60px;
+            font-size: 50px;
+            margin-bottom: 50px;
+        }
+
+        #settings {
+            font-size: 25px;
+        }
+
+        button,
+        #workDuration,
+        #restDuration {
+            display: inline-block;
+        }
+
+        #doRest {
+            font-size: 50px;
+            margin-top: 80px;
+            margin-bottom: 0px;
+            height: 60px;
+            box-sizing: content-box;
+        }
+
+        #timer {
+            font-size: 50px;
+            margin-top: 0px;
+            margin-bottom: 10px;
+            height: 60px;
+            box-sizing: content-box;
+        }
+
+        #progressBar {
+            width: 200px;
+            margin: auto;
+            margin-bottom: 60px;
+            margin-top: 0px;
+        }
+    </style>
+    <script>
+        let workTime = 30000;
+        let restTime = 10000;
+        let alarm = new Audio('alarm.mp3');
+        // alarm.volume = 1;
+        let doRest = true; //Is it currently work or rest time?
+        let startTime;
+        let endTime;
+        let timerLoop;
+
+        //Set duration für work timer
+        function setWorkDuration(timeChange) {
+            workTime = workTime + timeChange;
+            //Display time as MM:SS
+            let workTimeMinutes = workTime / (1000 * 60);
+            workTimeMinutes = Math.floor(workTimeMinutes);
+            workTimeMinutes = ('0' + workTimeMinutes).slice(-1);
+            let workTimeSeconds = (workTime / 1000) % 60;
+            workTimeSeconds = Math.round(workTimeSeconds);
+            workTimeSeconds = ('0' + workTimeSeconds).slice(-2);
+            let timerText = '0' + workTimeMinutes + ':' + workTimeSeconds;
+            workDuration.innerHTML = timerText;
+            console.log('workTime' + workTime);
+        }
+        //Set duration für rest timer
+        function setRestDuration(timeChange) {
+            restTime = restTime + timeChange;
+            //Display time as MM:SS
+            let restTimeMinutes = restTime / (1000 * 60);
+            restTimeMinutes = Math.floor(restTimeMinutes);
+            restTimeMinutes = ('0' + restTimeMinutes).slice(-1);
+            let restTimeSeconds = (restTime / 1000) % 60;
+            restTimeSeconds = Math.round(restTimeSeconds);
+            restTimeSeconds = ('0' + restTimeSeconds).slice(-2);
+            let timerText = '0' + restTimeMinutes + ':' + restTimeSeconds;
+            restDuration.innerHTML = timerText;
+            console.log('restTime' + restTime);
+        }
+
+
+        function startTimer() {
+            let countUp = 0;
+            alarm.play();
+
+            if (doRest == true) {
+                console.log('start rest timer');
+                document.querySelector('#doRest').innerHTML = 'REST';
+                startTime = new Date().getTime();
+                endTime = startTime + restTime;
+                timerLoop = setInterval(timer, 1000, restTime); //var so it can be accessed globally
+            } else {
+                console.log('start work timer');
+                document.querySelector('#doRest').innerHTML = 'WORK';
+                startTime = new Date().getTime();
+                endTime = startTime + workTime;
+                timerLoop = setInterval(timer, 1000, workTime);
+            }
+
+            button.innerHTML = ('<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="stopButton()">Stop</button >');
+
+            function timer(duration) {
+                let workLeft = endTime - new Date().getTime();
+                //calculate remaining time and display as MM:SS
+                let workLeftMinutes = workLeft / (1000 * 60);
+                workLeftMinutes = Math.floor(workLeftMinutes);
+                workLeftMinutes = ('0' + workLeftMinutes).slice(-1);
+                console.log(workLeftMinutes);
+                let workLeftSeconds = (workLeft / 1000) % 60;
+                workLeftSeconds = Math.round(workLeftSeconds);
+                workLeftSeconds = ('0' + workLeftSeconds).slice(-2);
+                console.log(workLeftSeconds);
+                let timerText = '0' + workLeftMinutes + ':' + workLeftSeconds;
+                console.log(timerText);
+                document.querySelector('#timer').innerHTML = timerText;
+                document.querySelector('#p1').MaterialProgress.setProgress(Math.round(100 - (workLeft / duration * 100)));
+                countUp++;
+                console.log(countUp + ' von ' + duration / 1000 + ' -> ' + Math.round(100 - (workLeft / duration * 100)) + '%');
+                // switch timers
+                if (countUp == duration / 1000) {
+                    console.log('stop timer');
+                    alarm.play();
+                    if (doRest == true) {
+                        document.querySelector('#timer').innerHTML = workTime / 1000;
+                    } else {
+                        document.querySelector('#timer').innerHTML = restTime / 1000;
+                    }                    // console.log(doRest);
+                    doRest = !doRest;
+                    //  console.log(doRest);
+                    clearInterval(timerLoop);
+                    startTimer(); // INCURSION?! - CAUSES STACK OVERFLOW!!
+                }
+            }
+
+
+
+
+
+
+
+            // setInterval(function () {
+            //     let workLeft = endTime - new Date().getTime();
+            //     if (workLeft > 0) {
+            //         //calculate remaining time in minutes ans seconds and display timerText
+            //         let workLeftMinutes = workLeft / (1000 * 60);
+            //         workLeftMinutes = Math.floor(workLeftMinutes);
+            //         workLeftMinutes = ('0' + workLeftMinutes).slice(-1);
+            //         let workLeftSeconds = (workLeft / 1000) % 60;
+            //         workLeftSeconds = Math.round(workLeftSeconds);
+            //         workLeftSeconds = ('0' + workLeftSeconds).slice(-2);
+            //         let timerText = '0' + workLeftMinutes + ':' + workLeftSeconds;
+            //         timer.innerHTML = timerText;
+            //         // document.querySelector('#p1').addEventListener('mdl-componentupgraded', function () {
+            //         //     this.MaterialProgress.setProgress(Math.round(100 - (workLeft / workTime * 100)));
+            //         // });
+            //         console.log(Math.round(100 - (workLeft / workTime * 100)) + '%');
+            //     } else {
+            //         alarm.play();
+            //         timer.innerHTML = '00:00';
+            //     }
+
+            // }, 1000);
+        }
+
+        function stopButton() {
+            console.log('stop timer');
+            //   console.log(doRest);
+            doRest = true;
+            //   console.log(doRest);
+            clearInterval(timerLoop);
+            button.innerHTML = ('<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="startTimer()">Start</button >');
+        }
+    </script>
+</head>
+
+<body>
+    <div id="wrapper">
+        <div id="header">
+            <h1>Workout-Timer</h1>
+        </div>
+        <div id="settings">
+            <div id="settingsWork"> WORK <br>
+                <button
+                    class="mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
+                    onclick="setWorkDuration(-5000)">
+                    <i class="material-icons">remove</i>
+                </button>
+
+                <div id="workDuration">00:30</div>
+
+                <button
+                    class="mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
+                    onclick="setWorkDuration(5000)">
+                    <i class="material-icons">add</i>
+                </button>
+            </div> <br>
+
+            <div id="settingsRest"> REST <br>
+                <button
+                    class="mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
+                    onclick="setRestDuration(-5000)">
+                    <i class="material-icons">remove</i>
+                </button>
+
+                <div id="restDuration">00:10</div>
+
+                <button
+                    class="mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
+                    onclick="setRestDuration(5000)">
+                    <i class="material-icons">add</i>
+                </button>
+            </div>
+
+        </div>
+        <div id="doRest">
+            READY
+        </div>
+        <div id="timer">
+            00:00
+        </div>
+        <div id="progressBar">
+            <div id="p1" class="mdl-progress mdl-js-progress"></div>
+        </div>
+        <div id="button">
+            <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="startTimer()">
+                Start
+            </button>
+        </div>
+    </div>
+
+</body>
+
+</html>
