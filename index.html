@@ -85,31 +85,39 @@
 
         //Set duration für work timer
         function setWorkDuration(timeChange) {
-            workTime = workTime + timeChange;
-            //Display time as MM:SS
-            let workTimeMinutes = workTime / (1000 * 60);
-            workTimeMinutes = Math.floor(workTimeMinutes);
-            workTimeMinutes = ('0' + workTimeMinutes).slice(-1);
-            let workTimeSeconds = (workTime / 1000) % 60;
-            workTimeSeconds = Math.round(workTimeSeconds);
-            workTimeSeconds = ('0' + workTimeSeconds).slice(-2);
-            let timerText = '0' + workTimeMinutes + ':' + workTimeSeconds;
-            workDuration.innerHTML = timerText;
-            console.log('workTime' + workTime);
+            if (workTime + timeChange < 0) {
+
+            } else {
+                workTime = workTime + timeChange;
+                //Display time as MM:SS
+                let workTimeMinutes = workTime / (1000 * 60);
+                workTimeMinutes = Math.floor(workTimeMinutes);
+                workTimeMinutes = ('0' + workTimeMinutes).slice(-1);
+                let workTimeSeconds = (workTime / 1000) % 60;
+                workTimeSeconds = Math.round(workTimeSeconds);
+                workTimeSeconds = ('0' + workTimeSeconds).slice(-2);
+                let timerText = '0' + workTimeMinutes + ':' + workTimeSeconds;
+                workDuration.innerHTML = timerText;
+                console.log('workTime' + workTime);
+            }
         }
         //Set duration für rest timer
         function setRestDuration(timeChange) {
-            restTime = restTime + timeChange;
-            //Display time as MM:SS
-            let restTimeMinutes = restTime / (1000 * 60);
-            restTimeMinutes = Math.floor(restTimeMinutes);
-            restTimeMinutes = ('0' + restTimeMinutes).slice(-1);
-            let restTimeSeconds = (restTime / 1000) % 60;
-            restTimeSeconds = Math.round(restTimeSeconds);
-            restTimeSeconds = ('0' + restTimeSeconds).slice(-2);
-            let timerText = '0' + restTimeMinutes + ':' + restTimeSeconds;
-            restDuration.innerHTML = timerText;
-            console.log('restTime' + restTime);
+            if (restTime + timeChange < 0) {
+
+            } else {
+                restTime = restTime + timeChange;
+                //Display time as MM:SS
+                let restTimeMinutes = restTime / (1000 * 60);
+                restTimeMinutes = Math.floor(restTimeMinutes);
+                restTimeMinutes = ('0' + restTimeMinutes).slice(-1);
+                let restTimeSeconds = (restTime / 1000) % 60;
+                restTimeSeconds = Math.round(restTimeSeconds);
+                restTimeSeconds = ('0' + restTimeSeconds).slice(-2);
+                let timerText = '0' + restTimeMinutes + ':' + restTimeSeconds;
+                restDuration.innerHTML = timerText;
+                console.log('restTime' + restTime);
+            }
         }
 
 
@@ -151,7 +159,7 @@
                 countUp++;
                 console.log(countUp + ' von ' + duration / 1000 + ' -> ' + Math.round(100 - (workLeft / duration * 100)) + '%');
                 // switch timers
-                if (countUp == duration / 1000) {
+                if (duration / 1000 - countUp <= 0) {
                     console.log('stop timer');
                     alarm.play();
                     if (doRest == true) {
