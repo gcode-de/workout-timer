@@ -108,6 +108,7 @@
     </style>
     <script>
         let alarm = new Audio('alarm.mp3');
+        let alarmShort = new Audio('alarm_short.mp3');
         // let workTime = 6000;
         // let restTime = 4000;
         // let pauseTime = 10000;
@@ -197,6 +198,7 @@
 
         function startTimer() {
             alarm.play(); //play once to enable audio on Safari
+            alarmShort.play(); //play once to enable audio on Safari
 
             displayStopButton();
             console.log(status);
@@ -220,11 +222,27 @@
             // }
 
         }
+        function playAlarm() {
+            switch (timeLeft / 1000) {
+                case 3:
+                    alarmShort.play();
+                    break;
+                case 2:
+                    alarmShort.play();
+                    break;
+                case 1:
+                    alarmShort.play();
+                    break;
+                case 0:
+                    alarm.play();
+                    break;
+            }
 
+        }
         function endRefreshLoop() {
             if (timeLeft / 1000 == 0) {
-                alarm.play();
-                console.log('alarm abgespielt');
+                // alarm.play();
+                // console.log('alarm abgespielt');
                 clearInterval(refreshLoop);
                 console.log('refreshLoop gestoppt');
 
@@ -284,6 +302,7 @@
             displayTimer();
             displayProgressBar();
             console.log(timeLeft / 1000);
+            playAlarm();
             endRefreshLoop()
 
         }
