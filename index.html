@@ -113,7 +113,7 @@
         // let restTime = 4000;
         // let pauseTime = 10000;
         // let rounds = 2;
-        let workTime = 30000;
+        let workTime = 20000;
         let restTime = 10000;
         let pauseTime = 120000;
         let rounds = 8;
@@ -269,15 +269,15 @@
                 switch (status) {
                     case 'rest':
                         timeLeft = restTime;
-                        console.log('case rest');
+                        console.log('switch timeLeft: rest');
                         break;
                     case 'work':
                         timeLeft = workTime;
-                        console.log('case work');
+                        console.log('switch timeLeft: work');
                         break;
                     case 'pause':
                         timeLeft = pauseTime;
-                        console.log('case pause');
+                        console.log('switch timeLeft: pause');
                         break;
                 }
                 console.log(timeLeft / 1000);
@@ -386,7 +386,7 @@
                     <i class="material-icons">remove</i>
                 </button>
 
-                <div id="workDuration">work 00:30</div>
+                <div id="workDuration">work 00:20</div>
 
                 <button
                     class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
@@ -430,7 +430,7 @@
             <div id="settingsPause" class="settings">
                 <button
                     class="button-left mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setPauseDuration(-5000)">
+                    onclick="setPauseDuration(-10000)">
                     <i class="material-icons">remove</i>
                 </button>
 
@@ -438,7 +438,7 @@
 
                 <button
                     class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setPauseDuration(5000)">
+                    onclick="setPauseDuration(10000)">
                     <i class="material-icons">add</i>
                 </button>
             </div>
