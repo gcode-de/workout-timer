@@ -356,7 +356,10 @@ function changeSetting(name, amount) {
     if (mode !== 'idle') return;
 
     const minimum = name === 'rounds' || name === 'sets' ? 1 : amount < 0 ? Math.abs(amount) : 1_000;
-    config[name] = Math.max(minimum, config[name] + amount);
+    const nextValue = Math.max(minimum, config[name] + amount);
+    if (nextValue === config[name]) return;
+
+    config[name] = nextValue;
     sequence.updateConfig(config);
     sequence.reset();
     remainingMs = sequence.duration;
@@ -439,9 +442,57 @@ function saveNamedConfiguration(name) {
     elements.configurationMessage.textContent = `Saved “${cleanName}”.`;
 }
 
+const activeSettingPresses = new Map();
+
+function repeatSettingChange(button, state) {
+    if (activeSettingPresses.get(button) !== state || button.disabled) return;
+
+    changeSetting(button.dataset.setting, Number(button.dataset.change));
+    const elapsed = performance.now() - state.startedAt;
+    const delay = elapsed > 2_000 ? 45 : elapsed > 1_000 ? 65 : 90;
+    state.timerId = window.setTimeout(() => repeatSettingChange(button, state), delay);
+}
+
+function stopSettingRepeat(button) {
+    const state = activeSettingPresses.get(button);
+    if (!state) return;
+
+    clearTimeout(state.timerId);
+    activeSettingPresses.delete(button);
+}
+
+function stopAllSettingRepeats() {
+    for (const button of activeSettingPresses.keys()) {
+        stopSettingRepeat(button);
+    }
+}
+
 elements.settingButtons.forEach((button) => {
-    button.addEventListener('click', () => {
+    button.title = 'Press and hold to adjust quickly';
+
+    button.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0 || button.disabled) return;
+        event.preventDefault();
+        stopSettingRepeat(button);
+        button.setPointerCapture?.(event.pointerId);
         changeSetting(button.dataset.setting, Number(button.dataset.change));
+
+        const state = {
+            startedAt: performance.now(),
+            timerId: null
+        };
+        state.timerId = window.setTimeout(() => repeatSettingChange(button, state), 380);
+        activeSettingPresses.set(button, state);
+    });
+
+    button.addEventListener('pointerup', () => stopSettingRepeat(button));
+    button.addEventListener('pointercancel', () => stopSettingRepeat(button));
+    button.addEventListener('lostpointercapture', () => stopSettingRepeat(button));
+
+    button.addEventListener('click', (event) => {
+        if (event.detail === 0 || !('PointerEvent' in window)) {
+            changeSetting(button.dataset.setting, Number(button.dataset.change));
+        }
     });
 });
 
@@ -504,11 +555,14 @@ elements.saveConfigurationForm.addEventListener('submit', (event) => {
 });
 
 document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') stopAllSettingRepeats();
     if (document.visibilityState === 'visible' && mode === 'running') {
         tick();
         acquireWakeLock();
     }
 });
+
+window.addEventListener('blur', stopAllSettingRepeats);
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
