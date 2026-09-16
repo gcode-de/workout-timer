@@ -3,9 +3,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#0b0c0f">
+    <meta id="themeColor" name="theme-color" content="#0b0c0f">
     <meta name="description" content="A simple interval timer for workouts.">
     <title>Workout Timer</title>
+    <script>
+        try {
+            const savedTheme = JSON.parse(localStorage.getItem('workoutTimerPreferences'))?.theme;
+            if (savedTheme === 'dark' || savedTheme === 'light') {
+                document.documentElement.dataset.theme = savedTheme;
+            }
+        } catch {}
+    </script>
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" href="./images/icons/icon-192x192.png">
     <link rel="apple-touch-icon" href="./images/icons/icon-192x192.png">
@@ -13,8 +21,57 @@
         :root {
             color-scheme: dark;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            background: #0b0c0f;
-            color: #f4f4f5;
+            --page: #0b0c0f;
+            --page-glow: #20243a;
+            --surface: rgb(19 21 28 / 92%);
+            --surface-soft: rgb(19 21 28 / 85%);
+            --border: #303442;
+            --text: #f4f4f5;
+            --muted: #a9adba;
+            --subtle: #818694;
+            --accent: #5965f2;
+            --accent-hover: #707af5;
+            --accent-soft: #aeb4ff;
+            --secondary: #343846;
+            --track: #303442;
+            background: var(--page);
+            color: var(--text);
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --page: #f4f5fb;
+            --page-glow: #d9dcff;
+            --surface: rgb(255 255 255 / 94%);
+            --surface-soft: rgb(255 255 255 / 88%);
+            --border: #d8dae5;
+            --text: #171821;
+            --muted: #5f6372;
+            --subtle: #686d7d;
+            --accent: #4854df;
+            --accent-hover: #3541ca;
+            --accent-soft: #353fab;
+            --secondary: #e5e7f0;
+            --track: #dfe1ea;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme="dark"]) {
+                color-scheme: light;
+                --page: #f4f5fb;
+                --page-glow: #d9dcff;
+                --surface: rgb(255 255 255 / 94%);
+                --surface-soft: rgb(255 255 255 / 88%);
+                --border: #d8dae5;
+                --text: #171821;
+                --muted: #5f6372;
+                --subtle: #686d7d;
+                --accent: #4854df;
+                --accent-hover: #3541ca;
+                --accent-soft: #353fab;
+                --secondary: #e5e7f0;
+                --track: #dfe1ea;
+            }
         }
 
         * { box-sizing: border-box; }
@@ -23,7 +80,8 @@
             min-height: 100svh;
             margin: 0;
             padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
-            background: radial-gradient(circle at top, #20243a 0, #0b0c0f 42%);
+            background: radial-gradient(circle at top, var(--page-glow) 0, var(--page) 42%);
+            color: var(--text);
         }
 
         main {
@@ -32,8 +90,15 @@
             text-align: center;
         }
 
-        h1 {
+        .topbar {
+            display: grid;
+            grid-template-columns: 44px 1fr 44px;
+            align-items: center;
             margin: 12px 0 28px;
+        }
+
+        h1 {
+            margin: 0;
             font-size: clamp(2rem, 9vw, 3rem);
             letter-spacing: -.06em;
         }
@@ -50,9 +115,9 @@
             align-items: center;
             min-height: 54px;
             padding: 3px;
-            border: 1px solid #303442;
+            border: 1px solid var(--border);
             border-radius: 16px;
-            background: rgb(19 21 28 / 85%);
+            background: var(--surface-soft);
         }
 
         .setting-value { font-size: 1rem; }
@@ -63,34 +128,43 @@
             border: 0;
             border-radius: 13px;
             color: #fff;
-            background: #5965f2;
+            background: var(--accent);
             font: inherit;
             cursor: pointer;
             touch-action: manipulation;
         }
 
-        button:hover { background: #707af5; }
-        button:focus-visible { outline: 3px solid #aeb4ff; outline-offset: 3px; }
+        button:hover { background: var(--accent-hover); }
+        button:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 3px; }
         button:disabled { cursor: not-allowed; opacity: .35; }
+
+        .icon-button {
+            padding: 0;
+            color: var(--text);
+            background: transparent;
+            font-size: 1.35rem;
+        }
+
+        .icon-button:hover { background: var(--secondary); }
 
         .timer-card {
             padding: 28px 22px 24px;
-            border: 1px solid #303442;
+            border: 1px solid var(--border);
             border-radius: 24px;
-            background: rgb(19 21 28 / 92%);
+            background: var(--surface);
             box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
         }
 
         #roundCounter {
             min-height: 24px;
-            color: #a9adba;
+            color: var(--muted);
             font-size: .95rem;
         }
 
         #status {
             min-height: 43px;
             margin-top: 8px;
-            color: #aeb4ff;
+            color: var(--accent-soft);
             font-size: 1.8rem;
             font-weight: 700;
             letter-spacing: .08em;
@@ -112,12 +186,12 @@
             overflow: hidden;
             border: 0;
             border-radius: 999px;
-            background: #303442;
+            background: var(--track);
         }
 
-        progress::-webkit-progress-bar { background: #303442; }
-        progress::-webkit-progress-value { background: #7d86ff; transition: width .2s linear; }
-        progress::-moz-progress-bar { background: #7d86ff; }
+        progress::-webkit-progress-bar { background: var(--track); }
+        progress::-webkit-progress-value { background: var(--accent); transition: width .2s linear; }
+        progress::-moz-progress-bar { background: var(--accent); }
 
         .controls {
             display: flex;
@@ -138,13 +212,74 @@
         .control-button.secondary {
             min-width: 54px;
             padding: 0;
-            background: #343846;
+            color: var(--text);
+            background: var(--secondary);
         }
 
         .hint {
             margin: 22px auto 0;
-            color: #818694;
+            color: var(--subtle);
             font: .75rem/1.5 system-ui, sans-serif;
+        }
+
+        dialog {
+            width: min(calc(100% - 32px), 420px);
+            padding: 0;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            color: var(--text);
+            background: var(--surface);
+            box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+        }
+
+        dialog::backdrop {
+            background: rgb(0 0 0 / 65%);
+            backdrop-filter: blur(4px);
+        }
+
+        .dialog-content { padding: 24px; }
+
+        .dialog-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .dialog-header h2 { margin: 0; font-size: 1.35rem; }
+
+        .preference-list {
+            display: grid;
+            gap: 4px;
+        }
+
+        .preference {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6px 18px;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .preference:last-child { border-bottom: 0; }
+        .preference small { color: var(--subtle); font: .76rem/1.4 system-ui, sans-serif; }
+
+        select {
+            min-height: 40px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            background: var(--secondary);
+            font: inherit;
+        }
+
+        input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            accent-color: var(--accent);
         }
 
         [hidden] { display: none !important; }
@@ -153,7 +288,11 @@
 </head>
 <body>
     <main>
-        <h1>Workout Timer</h1>
+        <header class="topbar">
+            <span aria-hidden="true"></span>
+            <h1>Workout Timer</h1>
+            <button id="openSettingsButton" class="icon-button" type="button" aria-label="Open settings">⚙</button>
+        </header>
 
         <section class="settings" aria-label="Workout settings">
             <div class="setting">
@@ -194,5 +333,35 @@
 
         <p class="hint">Rest → work for each round → set pause. The timer continues accurately when the tab is in the background.</p>
     </main>
+
+    <dialog id="settingsDialog" aria-labelledby="settingsTitle">
+        <div class="dialog-content">
+            <header class="dialog-header">
+                <h2 id="settingsTitle">Settings</h2>
+                <button id="closeSettingsButton" class="icon-button" type="button" aria-label="Close settings">×</button>
+            </header>
+            <div class="preference-list">
+                <label class="preference">
+                    <span>Theme</span>
+                    <select id="themeSetting">
+                        <option value="system">System</option>
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                    </select>
+                    <small>Follow the device or choose a fixed appearance.</small>
+                </label>
+                <label class="preference">
+                    <span>Vibration</span>
+                    <input id="vibrationSetting" type="checkbox">
+                    <small id="vibrationSupport">Vibrate at countdown and phase changes.</small>
+                </label>
+                <label class="preference">
+                    <span>Keep screen awake</span>
+                    <input id="wakeLockSetting" type="checkbox">
+                    <small id="wakeLockSupport">Prevent the display from sleeping during a workout.</small>
+                </label>
+            </div>
+        </div>
+    </dialog>
 </body>
 </html>

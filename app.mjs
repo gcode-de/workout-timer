@@ -10,6 +10,23 @@ const config = {
 const sequence = new WorkoutSequence(config);
 const alarm = new Audio('./alarm.mp3');
 const shortAlarm = new Audio('./alarm_short.mp3');
+const PREFERENCES_KEY = 'workoutTimerPreferences';
+const defaultPreferences = {
+    theme: 'system',
+    vibration: true,
+    keepAwake: true
+};
+
+function loadPreferences() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(PREFERENCES_KEY));
+        return { ...defaultPreferences, ...saved };
+    } catch {
+        return { ...defaultPreferences };
+    }
+}
+
+let preferences = loadPreferences();
 
 const elements = {
     workDuration: document.querySelector('#workDuration'),
@@ -24,7 +41,15 @@ const elements = {
     primaryIcon: document.querySelector('#primaryIcon'),
     primaryLabel: document.querySelector('#primaryLabel'),
     stopButton: document.querySelector('#stopButton'),
-    settingButtons: [...document.querySelectorAll('[data-setting]')]
+    settingButtons: [...document.querySelectorAll('[data-setting]')],
+    settingsDialog: document.querySelector('#settingsDialog'),
+    openSettingsButton: document.querySelector('#openSettingsButton'),
+    closeSettingsButton: document.querySelector('#closeSettingsButton'),
+    themeSetting: document.querySelector('#themeSetting'),
+    vibrationSetting: document.querySelector('#vibrationSetting'),
+    vibrationSupport: document.querySelector('#vibrationSupport'),
+    wakeLockSetting: document.querySelector('#wakeLockSetting'),
+    wakeLockSupport: document.querySelector('#wakeLockSupport')
 };
 
 let mode = 'idle';
@@ -33,6 +58,71 @@ let remainingMs = sequence.duration;
 let phaseEndsAt = 0;
 let lastCountdownSecond = null;
 let audioUnlocked = false;
+let wakeLock = null;
+
+function savePreferences() {
+    try {
+        localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+    } catch {}
+}
+
+function applyTheme() {
+    if (preferences.theme === 'system') {
+        delete document.documentElement.dataset.theme;
+    } else {
+        document.documentElement.dataset.theme = preferences.theme;
+    }
+
+    const light = preferences.theme === 'light'
+        || (preferences.theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+    document.querySelector('#themeColor').content = light ? '#f4f5fb' : '#0b0c0f';
+}
+
+function vibrate(pattern) {
+    if (preferences.vibration && 'vibrate' in navigator) {
+        navigator.vibrate(pattern);
+    }
+}
+
+function updateCapabilityLabels() {
+    if (!('vibrate' in navigator)) {
+        elements.vibrationSetting.disabled = true;
+        elements.vibrationSupport.textContent = 'Vibration is not supported by this device.';
+    }
+
+    if (!('wakeLock' in navigator)) {
+        elements.wakeLockSetting.disabled = true;
+        elements.wakeLockSupport.textContent = 'Screen wake lock is not supported by this browser.';
+    } else if (wakeLock) {
+        elements.wakeLockSupport.textContent = 'The screen will stay awake during this workout.';
+    } else {
+        elements.wakeLockSupport.textContent = 'Prevent the display from sleeping during a workout.';
+    }
+}
+
+async function acquireWakeLock() {
+    if (!preferences.keepAwake || mode !== 'running' || document.visibilityState !== 'visible') return;
+    if (!('wakeLock' in navigator) || wakeLock) return;
+
+    try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+            updateCapabilityLabels();
+        }, { once: true });
+    } catch {
+        wakeLock = null;
+    }
+    updateCapabilityLabels();
+}
+
+async function releaseWakeLock() {
+    if (!wakeLock) return;
+    const currentLock = wakeLock;
+    wakeLock = null;
+    await currentLock.release().catch(() => {});
+    updateCapabilityLabels();
+}
 
 function safelyPlay(audio) {
     audio.currentTime = 0;
@@ -106,6 +196,7 @@ function announceCountdown() {
     if (seconds >= 1 && seconds <= 3 && seconds !== lastCountdownSecond) {
         lastCountdownSecond = seconds;
         safelyPlay(shortAlarm);
+        vibrate(40);
     }
 }
 
@@ -113,6 +204,7 @@ function syncExpiredPhases(now) {
     if (now < phaseEndsAt) return;
 
     safelyPlay(alarm);
+    vibrate([160, 80, 160]);
     do {
         sequence.next();
         phaseEndsAt += sequence.duration;
@@ -138,6 +230,7 @@ function startTimer() {
     lastCountdownSecond = null;
     clearInterval(intervalId);
     intervalId = window.setInterval(tick, 200);
+    acquireWakeLock();
     render();
 }
 
@@ -148,6 +241,7 @@ function pauseTimer() {
     mode = 'paused';
     clearInterval(intervalId);
     intervalId = null;
+    releaseWakeLock();
     render();
 }
 
@@ -158,6 +252,7 @@ function stopTimer() {
     sequence.reset();
     remainingMs = sequence.duration;
     lastCountdownSecond = null;
+    releaseWakeLock();
     elements.progress.value = 0;
     render();
     elements.timer.textContent = '00:00';
@@ -187,10 +282,45 @@ elements.primaryButton.addEventListener('click', () => {
 
 elements.stopButton.addEventListener('click', stopTimer);
 
-document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && mode === 'running') tick();
+elements.openSettingsButton.addEventListener('click', () => {
+    elements.settingsDialog.showModal();
 });
 
+elements.closeSettingsButton.addEventListener('click', () => {
+    elements.settingsDialog.close();
+});
+
+elements.themeSetting.addEventListener('change', () => {
+    preferences.theme = elements.themeSetting.value;
+    applyTheme();
+    savePreferences();
+});
+
+elements.vibrationSetting.addEventListener('change', () => {
+    preferences.vibration = elements.vibrationSetting.checked;
+    savePreferences();
+    if (preferences.vibration) vibrate(40);
+});
+
+elements.wakeLockSetting.addEventListener('change', () => {
+    preferences.keepAwake = elements.wakeLockSetting.checked;
+    savePreferences();
+    if (preferences.keepAwake) acquireWakeLock();
+    else releaseWakeLock();
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && mode === 'running') {
+        tick();
+        acquireWakeLock();
+    }
+});
+
+elements.themeSetting.value = preferences.theme;
+elements.vibrationSetting.checked = preferences.vibration;
+elements.wakeLockSetting.checked = preferences.keepAwake;
+applyTheme();
+updateCapabilityLabels();
 updateSettings();
 render();
 elements.timer.textContent = '00:00';
