@@ -508,6 +508,12 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    });
+}
+
 elements.themeSetting.value = preferences.theme;
 elements.vibrationSetting.checked = preferences.vibration;
 elements.wakeLockSetting.checked = preferences.keepAwake;

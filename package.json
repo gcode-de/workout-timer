@@ -1,0 +1,9 @@
+{
+  "name": "workout-timer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check app.mjs && node --check timer-core.mjs && node --check service-worker.js && node --test"
+  }
+}
