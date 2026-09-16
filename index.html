@@ -202,8 +202,13 @@
         }
 
         [data-setting] {
+            display: inline-grid;
+            place-items: center;
+            width: 38px;
+            height: 38px;
             min-width: 38px;
             min-height: 38px;
+            padding: 0;
             border: 1px solid var(--border);
             border-radius: 50%;
             color: var(--text);
@@ -211,6 +216,13 @@
             font-size: 1.2rem;
             -webkit-touch-callout: none;
             user-select: none;
+        }
+
+        [data-setting] svg {
+            display: block;
+            width: 16px;
+            height: 16px;
+            pointer-events: none;
         }
 
         [data-setting]:hover { background: color-mix(in srgb, var(--accent) 24%, var(--secondary)); }
@@ -488,29 +500,29 @@
 
         <section class="settings" aria-label="Workout settings">
             <div class="setting">
-                <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time">−</button>
+                <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Work</span><strong id="workDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time">+</button>
+                <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
             </div>
             <div class="setting">
-                <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce rest time">−</button>
+                <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce rest time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Rest</span><strong id="restDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase rest time">+</button>
+                <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase rest time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
             </div>
             <div class="setting">
-                <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds">−</button>
+                <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Rounds</span><strong id="rounds" class="setting-value"></strong></span>
-                <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds">+</button>
+                <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
             </div>
             <div class="setting">
-                <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce sets">−</button>
+                <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Sets</span><strong id="sets" class="setting-value"></strong></span>
-                <button type="button" data-setting="sets" data-change="1" aria-label="Increase sets">+</button>
+                <button type="button" data-setting="sets" data-change="1" aria-label="Increase sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
             </div>
             <div class="setting">
-                <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause">−</button>
+                <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Set pause</span><strong id="pauseDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause">+</button>
+                <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
             </div>
         </section>
 
