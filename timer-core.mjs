@@ -1,7 +1,8 @@
 export const PHASES = Object.freeze({
     REST: 'rest',
     WORK: 'work',
-    PAUSE: 'pause'
+    PAUSE: 'pause',
+    COMPLETE: 'complete'
 });
 
 const MIN_DURATION_MS = 1000;
@@ -12,9 +13,9 @@ function assertDuration(value, name) {
     }
 }
 
-function assertRounds(value) {
+function assertCount(value, name) {
     if (!Number.isInteger(value) || value < 1) {
-        throw new RangeError('rounds must be a positive integer');
+        throw new RangeError(`${name} must be a positive integer`);
     }
 }
 
@@ -27,30 +28,33 @@ export function formatDuration(milliseconds) {
 }
 
 export class WorkoutSequence {
-    constructor({ workMs, restMs, pauseMs, rounds }) {
-        this.updateConfig({ workMs, restMs, pauseMs, rounds });
+    constructor({ workMs, restMs, pauseMs, rounds, sets }) {
+        this.updateConfig({ workMs, restMs, pauseMs, rounds, sets });
         this.reset();
     }
 
-    updateConfig({ workMs, restMs, pauseMs, rounds }) {
+    updateConfig({ workMs, restMs, pauseMs, rounds, sets }) {
         assertDuration(workMs, 'workMs');
         assertDuration(restMs, 'restMs');
         assertDuration(pauseMs, 'pauseMs');
-        assertRounds(rounds);
+        assertCount(rounds, 'rounds');
+        assertCount(sets, 'sets');
 
-        this.config = { workMs, restMs, pauseMs, rounds };
+        this.config = { workMs, restMs, pauseMs, rounds, sets };
     }
 
     reset() {
         this.phase = PHASES.REST;
         this.round = 1;
+        this.set = 1;
     }
 
     get duration() {
         const durationByPhase = {
             [PHASES.REST]: this.config.restMs,
             [PHASES.WORK]: this.config.workMs,
-            [PHASES.PAUSE]: this.config.pauseMs
+            [PHASES.PAUSE]: this.config.pauseMs,
+            [PHASES.COMPLETE]: 0
         };
 
         return durationByPhase[this.phase];
@@ -62,11 +66,16 @@ export class WorkoutSequence {
         } else if (this.phase === PHASES.WORK && this.round < this.config.rounds) {
             this.round += 1;
             this.phase = PHASES.REST;
-        } else if (this.phase === PHASES.WORK) {
+        } else if (this.phase === PHASES.WORK && this.set < this.config.sets) {
             this.phase = PHASES.PAUSE;
-        } else {
+        } else if (this.phase === PHASES.WORK) {
+            this.phase = PHASES.COMPLETE;
+        } else if (this.phase === PHASES.PAUSE) {
+            this.set += 1;
             this.round = 1;
             this.phase = PHASES.REST;
+        } else {
+            this.reset();
         }
 
         return this.snapshot();
@@ -76,8 +85,10 @@ export class WorkoutSequence {
         return {
             phase: this.phase,
             round: this.round,
+            set: this.set,
             duration: this.duration,
-            rounds: this.config.rounds
+            rounds: this.config.rounds,
+            sets: this.config.sets
         };
     }
 }

@@ -1,11 +1,49 @@
 import { formatDuration, PHASES, WorkoutSequence } from './timer-core.mjs';
 
-const config = {
+const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
+const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
+const defaultConfig = {
     workMs: 20_000,
     restMs: 10_000,
     pauseMs: 120_000,
-    rounds: 8
+    rounds: 8,
+    sets: 3
 };
+
+const builtInConfigurations = [
+    { id: 'tabata', name: 'Classic Tabata', workMs: 20_000, restMs: 10_000, pauseMs: 60_000, rounds: 8, sets: 1 },
+    { id: 'cardio', name: 'Cardio Intervals', workMs: 60_000, restMs: 30_000, pauseMs: 120_000, rounds: 10, sets: 2 },
+    { id: 'strength', name: 'Strength Training', workMs: 45_000, restMs: 75_000, pauseMs: 180_000, rounds: 4, sets: 3 }
+];
+
+function isValidConfiguration(value) {
+    return value
+        && ['workMs', 'restMs', 'pauseMs'].every((key) => Number.isFinite(value[key]) && value[key] >= 1_000)
+        && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1);
+}
+
+function loadActiveConfig() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(ACTIVE_CONFIG_KEY));
+        return isValidConfiguration(saved) ? { ...defaultConfig, ...saved } : { ...defaultConfig };
+    } catch {
+        return { ...defaultConfig };
+    }
+}
+
+function loadCustomConfigurations() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(CONFIGURATIONS_KEY));
+        return Array.isArray(saved)
+            ? saved.filter((item) => typeof item.name === 'string' && item.name.trim() && isValidConfiguration(item))
+            : [];
+    } catch {
+        return [];
+    }
+}
+
+const config = loadActiveConfig();
+let customConfigurations = loadCustomConfigurations();
 
 const sequence = new WorkoutSequence(config);
 const alarm = new Audio('./alarm.mp3');
@@ -33,6 +71,7 @@ const elements = {
     restDuration: document.querySelector('#restDuration'),
     pauseDuration: document.querySelector('#pauseDuration'),
     rounds: document.querySelector('#rounds'),
+    sets: document.querySelector('#sets'),
     roundCounter: document.querySelector('#roundCounter'),
     status: document.querySelector('#status'),
     timer: document.querySelector('#timer'),
@@ -49,7 +88,14 @@ const elements = {
     vibrationSetting: document.querySelector('#vibrationSetting'),
     vibrationSupport: document.querySelector('#vibrationSupport'),
     wakeLockSetting: document.querySelector('#wakeLockSetting'),
-    wakeLockSupport: document.querySelector('#wakeLockSupport')
+    wakeLockSupport: document.querySelector('#wakeLockSupport'),
+    configurationSelect: document.querySelector('#configurationSelect'),
+    loadConfigurationButton: document.querySelector('#loadConfigurationButton'),
+    deleteConfigurationButton: document.querySelector('#deleteConfigurationButton'),
+    configurationName: document.querySelector('#configurationName'),
+    saveConfigurationForm: document.querySelector('#saveConfigurationForm'),
+    configurationMessage: document.querySelector('#configurationMessage'),
+    configurationControls: [...document.querySelectorAll('[data-configuration-control]')]
 };
 
 let mode = 'idle';
@@ -63,6 +109,18 @@ let wakeLock = null;
 function savePreferences() {
     try {
         localStorage.setItem(PREFERENCES_KEY, JSON.stringify(preferences));
+    } catch {}
+}
+
+function saveActiveConfig() {
+    try {
+        localStorage.setItem(ACTIVE_CONFIG_KEY, JSON.stringify(config));
+    } catch {}
+}
+
+function saveCustomConfigurations() {
+    try {
+        localStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(customConfigurations));
     } catch {}
 }
 
@@ -154,19 +212,24 @@ function updateSettings() {
     elements.restDuration.textContent = `rest ${formatDuration(config.restMs)}`;
     elements.pauseDuration.textContent = `pause ${formatDuration(config.pauseMs)}`;
     elements.rounds.textContent = `${config.rounds} ${config.rounds === 1 ? 'round' : 'rounds'}`;
+    elements.sets.textContent = `${config.sets} ${config.sets === 1 ? 'set' : 'sets'}`;
 }
 
 function updatePhaseDisplay() {
-    const { phase, round, rounds } = sequence.snapshot();
-    elements.status.textContent = mode === 'idle' ? 'READY' : phase.toUpperCase();
-    elements.roundCounter.textContent = phase === PHASES.PAUSE
-        ? 'set complete'
-        : `round ${round} of ${rounds}`;
+    const { phase, round, rounds, set, sets } = sequence.snapshot();
+    elements.status.textContent = mode === 'idle' ? 'READY' : mode === 'complete' ? 'DONE' : phase.toUpperCase();
+    if (phase === PHASES.COMPLETE) {
+        elements.roundCounter.textContent = 'workout complete';
+    } else if (phase === PHASES.PAUSE) {
+        elements.roundCounter.textContent = `set ${set} of ${sets} complete`;
+    } else {
+        elements.roundCounter.textContent = `set ${set} of ${sets} · round ${round} of ${rounds}`;
+    }
 }
 
 function updateTimerDisplay() {
     const duration = sequence.duration;
-    const progress = duration > 0 ? 1 - (remainingMs / duration) : 0;
+    const progress = mode === 'complete' ? 1 : duration > 0 ? 1 - (remainingMs / duration) : 0;
     elements.timer.textContent = formatDuration(remainingMs);
     elements.progress.value = Math.min(1, Math.max(0, progress));
     elements.progress.setAttribute('aria-valuetext', `${Math.round(progress * 100)}%`);
@@ -174,15 +237,20 @@ function updateTimerDisplay() {
 
 function updateControls() {
     const isRunning = mode === 'running';
-    const workoutStarted = mode !== 'idle';
+    const workoutActive = mode === 'running' || mode === 'paused';
+    const workoutComplete = mode === 'complete';
 
     elements.primaryIcon.textContent = isRunning ? 'Ⅱ' : '▶';
-    elements.primaryLabel.textContent = isRunning ? 'Pause' : workoutStarted ? 'Resume' : 'Start';
+    elements.primaryLabel.textContent = isRunning ? 'Pause' : workoutComplete ? 'Restart' : workoutActive ? 'Resume' : 'Start';
     elements.primaryButton.setAttribute('aria-label', elements.primaryLabel.textContent);
-    elements.stopButton.hidden = !workoutStarted;
+    elements.stopButton.hidden = !workoutActive;
     elements.settingButtons.forEach((button) => {
-        button.disabled = workoutStarted;
+        button.disabled = workoutActive;
     });
+    elements.configurationControls.forEach((control) => {
+        control.disabled = workoutActive;
+    });
+    updateDeleteConfigurationButton();
 }
 
 function render() {
@@ -200,22 +268,38 @@ function announceCountdown() {
     }
 }
 
+function finishWorkout() {
+    mode = 'complete';
+    remainingMs = 0;
+    clearInterval(intervalId);
+    intervalId = null;
+    releaseWakeLock();
+}
+
 function syncExpiredPhases(now) {
-    if (now < phaseEndsAt) return;
+    if (now < phaseEndsAt) return false;
 
     safelyPlay(alarm);
     vibrate([160, 80, 160]);
     do {
         sequence.next();
+        if (sequence.phase === PHASES.COMPLETE) {
+            finishWorkout();
+            return true;
+        }
         phaseEndsAt += sequence.duration;
     } while (now >= phaseEndsAt);
 
     lastCountdownSecond = null;
+    return false;
 }
 
 function tick() {
     const now = Date.now();
-    syncExpiredPhases(now);
+    if (syncExpiredPhases(now)) {
+        render();
+        return;
+    }
     remainingMs = Math.max(0, phaseEndsAt - now);
     announceCountdown();
     render();
@@ -223,6 +307,11 @@ function tick() {
 
 function startTimer() {
     if (mode === 'running') return;
+
+    if (mode === 'complete') {
+        sequence.reset();
+        remainingMs = sequence.duration;
+    }
 
     unlockAudio();
     mode = 'running';
@@ -236,7 +325,10 @@ function startTimer() {
 
 function pauseTimer() {
     const now = Date.now();
-    syncExpiredPhases(now);
+    if (syncExpiredPhases(now)) {
+        render();
+        return;
+    }
     remainingMs = Math.max(0, phaseEndsAt - now);
     mode = 'paused';
     clearInterval(intervalId);
@@ -261,12 +353,88 @@ function stopTimer() {
 function changeSetting(name, amount) {
     if (mode !== 'idle') return;
 
-    const minimum = name === 'rounds' ? 1 : amount < 0 ? Math.abs(amount) : 1_000;
+    const minimum = name === 'rounds' || name === 'sets' ? 1 : amount < 0 ? Math.abs(amount) : 1_000;
     config[name] = Math.max(minimum, config[name] + amount);
     sequence.updateConfig(config);
     sequence.reset();
     remainingMs = sequence.duration;
+    saveActiveConfig();
     updateSettings();
+}
+
+function renderConfigurationOptions(selectedId = '') {
+    elements.configurationSelect.replaceChildren();
+
+    const builtInGroup = document.createElement('optgroup');
+    builtInGroup.label = 'Built-in';
+    for (const item of builtInConfigurations) {
+        const option = new Option(item.name, `built-in:${item.id}`);
+        builtInGroup.append(option);
+    }
+    elements.configurationSelect.append(builtInGroup);
+
+    if (customConfigurations.length > 0) {
+        const customGroup = document.createElement('optgroup');
+        customGroup.label = 'My configurations';
+        for (const item of customConfigurations) {
+            const option = new Option(item.name, `custom:${item.id}`);
+            customGroup.append(option);
+        }
+        elements.configurationSelect.append(customGroup);
+    }
+
+    if (selectedId) elements.configurationSelect.value = selectedId;
+    updateDeleteConfigurationButton();
+}
+
+function selectedConfiguration() {
+    const [type, id] = elements.configurationSelect.value.split(':');
+    const source = type === 'custom' ? customConfigurations : builtInConfigurations;
+    return source.find((item) => item.id === id);
+}
+
+function updateDeleteConfigurationButton() {
+    const workoutActive = mode === 'running' || mode === 'paused';
+    elements.deleteConfigurationButton.disabled = workoutActive
+        || !elements.configurationSelect.value.startsWith('custom:');
+}
+
+function applyConfiguration(item) {
+    if (!item || mode === 'running' || mode === 'paused') return;
+    for (const key of ['workMs', 'restMs', 'pauseMs', 'rounds', 'sets']) {
+        config[key] = item[key];
+    }
+    sequence.updateConfig(config);
+    sequence.reset();
+    mode = 'idle';
+    remainingMs = sequence.duration;
+    saveActiveConfig();
+    updateSettings();
+    render();
+    elements.timer.textContent = '00:00';
+    elements.configurationMessage.textContent = `Loaded “${item.name}”.`;
+}
+
+function saveNamedConfiguration(name) {
+    const cleanName = name.trim();
+    if (!cleanName) return;
+
+    let item = customConfigurations.find((entry) => entry.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase());
+    if (item) {
+        Object.assign(item, config, { name: cleanName });
+    } else {
+        item = {
+            id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()),
+            name: cleanName,
+            ...config
+        };
+        customConfigurations.push(item);
+    }
+
+    saveCustomConfigurations();
+    renderConfigurationOptions(`custom:${item.id}`);
+    elements.configurationName.value = '';
+    elements.configurationMessage.textContent = `Saved “${cleanName}”.`;
 }
 
 elements.settingButtons.forEach((button) => {
@@ -309,6 +477,30 @@ elements.wakeLockSetting.addEventListener('change', () => {
     else releaseWakeLock();
 });
 
+elements.configurationSelect.addEventListener('change', () => {
+    updateDeleteConfigurationButton();
+    elements.configurationMessage.textContent = '';
+});
+
+elements.loadConfigurationButton.addEventListener('click', () => {
+    applyConfiguration(selectedConfiguration());
+});
+
+elements.deleteConfigurationButton.addEventListener('click', () => {
+    const [type, id] = elements.configurationSelect.value.split(':');
+    if (type !== 'custom') return;
+    const item = customConfigurations.find((entry) => entry.id === id);
+    customConfigurations = customConfigurations.filter((entry) => entry.id !== id);
+    saveCustomConfigurations();
+    renderConfigurationOptions();
+    elements.configurationMessage.textContent = item ? `Deleted “${item.name}”.` : '';
+});
+
+elements.saveConfigurationForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    saveNamedConfiguration(elements.configurationName.value);
+});
+
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && mode === 'running') {
         tick();
@@ -321,6 +513,7 @@ elements.vibrationSetting.checked = preferences.vibration;
 elements.wakeLockSetting.checked = preferences.keepAwake;
 applyTheme();
 updateCapabilityLabels();
+renderConfigurationOptions();
 updateSettings();
 render();
 elements.timer.textContent = '00:00';

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { formatDuration, PHASES, WorkoutSequence } from './timer-core.mjs';
 
-const defaults = { workMs: 20_000, restMs: 10_000, pauseMs: 120_000, rounds: 3 };
+const defaults = { workMs: 20_000, restMs: 10_000, pauseMs: 120_000, rounds: 3, sets: 2 };
 
 test('formats durations without wrapping after nine minutes', () => {
     assert.equal(formatDuration(0), '00:00');
@@ -33,16 +33,25 @@ test('runs rest and work for every round before the set pause', () => {
 });
 
 test('starts a fresh set after the pause', () => {
-    const sequence = new WorkoutSequence({ ...defaults, rounds: 1 });
+    const sequence = new WorkoutSequence({ ...defaults, rounds: 1, sets: 2 });
 
     sequence.next();
     sequence.next();
     assert.deepEqual(sequence.next(), {
         phase: PHASES.REST,
         round: 1,
+        set: 2,
         duration: defaults.restMs,
-        rounds: 1
+        rounds: 1,
+        sets: 2
     });
+});
+
+test('completes after the final work interval of the final set', () => {
+    const sequence = new WorkoutSequence({ ...defaults, rounds: 1, sets: 1 });
+
+    sequence.next();
+    assert.equal(sequence.next().phase, PHASES.COMPLETE);
 });
 
 test('rejects zero durations and zero rounds', () => {
@@ -53,5 +62,9 @@ test('rejects zero durations and zero rounds', () => {
     assert.throws(
         () => new WorkoutSequence({ ...defaults, rounds: 0 }),
         /rounds must be a positive integer/
+    );
+    assert.throws(
+        () => new WorkoutSequence({ ...defaults, sets: 0 }),
+        /sets must be a positive integer/
     );
 });

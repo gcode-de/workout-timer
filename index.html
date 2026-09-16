@@ -224,12 +224,14 @@
 
         dialog {
             width: min(calc(100% - 32px), 420px);
+            max-height: min(90svh, 720px);
             padding: 0;
             border: 1px solid var(--border);
             border-radius: 22px;
             color: var(--text);
             background: var(--surface);
             box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+            overflow: auto;
         }
 
         dialog::backdrop {
@@ -253,6 +255,18 @@
             gap: 4px;
         }
 
+        .settings-section + .settings-section {
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 1px solid var(--border);
+        }
+
+        .settings-section h3 {
+            margin: 0 0 14px;
+            text-align: left;
+            font-size: 1rem;
+        }
+
         .preference {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -266,7 +280,8 @@
         .preference:last-child { border-bottom: 0; }
         .preference small { color: var(--subtle); font: .76rem/1.4 system-ui, sans-serif; }
 
-        select {
+        select,
+        input[type="text"] {
             min-height: 40px;
             padding: 0 10px;
             border: 1px solid var(--border);
@@ -280,6 +295,36 @@
             width: 22px;
             height: 22px;
             accent-color: var(--accent);
+        }
+
+        .configuration-controls,
+        .configuration-save {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 8px;
+        }
+
+        .configuration-save {
+            grid-template-columns: 1fr auto;
+            margin-top: 10px;
+        }
+
+        .configuration-controls button,
+        .configuration-save button {
+            padding: 0 14px;
+        }
+
+        .configuration-message {
+            min-height: 20px;
+            margin: 8px 0 0;
+            color: var(--subtle);
+            text-align: left;
+            font: .76rem/1.4 system-ui, sans-serif;
+        }
+
+        @media (max-width: 380px) {
+            .configuration-controls { grid-template-columns: 1fr 1fr; }
+            .configuration-controls select { grid-column: 1 / -1; }
         }
 
         [hidden] { display: none !important; }
@@ -311,6 +356,11 @@
                 <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds">+</button>
             </div>
             <div class="setting">
+                <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce sets">−</button>
+                <span id="sets" class="setting-value"></span>
+                <button type="button" data-setting="sets" data-change="1" aria-label="Increase sets">+</button>
+            </div>
+            <div class="setting">
                 <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause">−</button>
                 <span id="pauseDuration" class="setting-value"></span>
                 <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause">+</button>
@@ -340,27 +390,43 @@
                 <h2 id="settingsTitle">Settings</h2>
                 <button id="closeSettingsButton" class="icon-button" type="button" aria-label="Close settings">×</button>
             </header>
-            <div class="preference-list">
-                <label class="preference">
-                    <span>Theme</span>
-                    <select id="themeSetting">
-                        <option value="system">System</option>
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                    </select>
-                    <small>Follow the device or choose a fixed appearance.</small>
-                </label>
-                <label class="preference">
-                    <span>Vibration</span>
-                    <input id="vibrationSetting" type="checkbox">
-                    <small id="vibrationSupport">Vibrate at countdown and phase changes.</small>
-                </label>
-                <label class="preference">
-                    <span>Keep screen awake</span>
-                    <input id="wakeLockSetting" type="checkbox">
-                    <small id="wakeLockSupport">Prevent the display from sleeping during a workout.</small>
-                </label>
-            </div>
+            <section class="settings-section" aria-labelledby="preferencesTitle">
+                <h3 id="preferencesTitle">Preferences</h3>
+                <div class="preference-list">
+                    <label class="preference">
+                        <span>Theme</span>
+                        <select id="themeSetting">
+                            <option value="system">System</option>
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                        <small>Follow the device or choose a fixed appearance.</small>
+                    </label>
+                    <label class="preference">
+                        <span>Vibration</span>
+                        <input id="vibrationSetting" type="checkbox">
+                        <small id="vibrationSupport">Vibrate at countdown and phase changes.</small>
+                    </label>
+                    <label class="preference">
+                        <span>Keep screen awake</span>
+                        <input id="wakeLockSetting" type="checkbox">
+                        <small id="wakeLockSupport">Prevent the display from sleeping during a workout.</small>
+                    </label>
+                </div>
+            </section>
+            <section class="settings-section" aria-labelledby="configurationsTitle">
+                <h3 id="configurationsTitle">Configurations</h3>
+                <div class="configuration-controls">
+                    <select id="configurationSelect" data-configuration-control aria-label="Saved configuration"></select>
+                    <button id="loadConfigurationButton" data-configuration-control type="button">Load</button>
+                    <button id="deleteConfigurationButton" data-configuration-control type="button">Delete</button>
+                </div>
+                <form id="saveConfigurationForm" class="configuration-save">
+                    <input id="configurationName" data-configuration-control type="text" maxlength="40" required placeholder="My workout" aria-label="Configuration name">
+                    <button data-configuration-control type="submit">Save current</button>
+                </form>
+                <p id="configurationMessage" class="configuration-message" aria-live="polite"></p>
+            </section>
         </div>
     </dialog>
 </body>
