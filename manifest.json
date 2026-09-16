@@ -3,10 +3,10 @@
   "short_name": "workout-timer",
   "theme_color": "#000",
   "background_color": "#000",
-  "display": "fullScreen",
+  "display": "standalone",
   "orientation": "portrait",
-  "scope": "/",
-  "start_url": "/",
+  "scope": "./",
+  "start_url": "./",
   "icons": [
     {
       "src": "images/icons/icon-72x72.png",

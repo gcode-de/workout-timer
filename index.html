@@ -1,473 +1,198 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workout-Timer App</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
-    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;500&display=swap" rel="stylesheet">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0b0c0f">
+    <meta name="description" content="A simple interval timer for workouts.">
+    <title>Workout Timer</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./images/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" href="./images/icons/icon-192x192.png">
     <style>
-        body {
-            height: 100vh;
-            font-family: 'Roboto Mono', monospace;
-            margin: 0;
-            background-color: black;
-            color: lightgray;
-            text-align: center;
+        :root {
+            color-scheme: dark;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background: #0b0c0f;
+            color: #f4f4f5;
+        }
 
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100svh;
+            margin: 0;
+            padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+            background: radial-gradient(circle at top, #20243a 0, #0b0c0f 42%);
+        }
+
+        main {
+            width: min(100%, 440px);
+            margin: 0 auto;
+            text-align: center;
         }
 
         h1 {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 50px;
-            margin-bottom: 30px;
-        }
-
-        #settings {
-            font-size: 20px;
-            width: max-content;
-            margin: auto;
-            /* display: grid;
-            place-items: center; */
-        }
-
-        button,
-        #workDuration,
-        #restDuration,
-        #pauseDuration,
-        #rounds {
-            display: inline-block;
-            margin: 0px 10px;
-            vertical-align: middle;
-        }
-
-        .button-left {
-            float: left;
-        }
-
-        .button-right {
-            float: right;
+            margin: 12px 0 28px;
+            font-size: clamp(2rem, 9vw, 3rem);
+            letter-spacing: -.06em;
         }
 
         .settings {
-            height: fit-content;
-            vertical-align: middle;
-            margin-bottom: 12px;
+            display: grid;
+            gap: 10px;
+            margin-bottom: 32px;
+        }
+
+        .setting {
+            display: grid;
+            grid-template-columns: 48px 1fr 48px;
+            align-items: center;
+            min-height: 54px;
+            padding: 3px;
+            border: 1px solid #303442;
+            border-radius: 16px;
+            background: rgb(19 21 28 / 85%);
+        }
+
+        .setting-value { font-size: 1rem; }
+
+        button {
+            min-width: 44px;
+            min-height: 44px;
+            border: 0;
+            border-radius: 13px;
+            color: #fff;
+            background: #5965f2;
+            font: inherit;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        button:hover { background: #707af5; }
+        button:focus-visible { outline: 3px solid #aeb4ff; outline-offset: 3px; }
+        button:disabled { cursor: not-allowed; opacity: .35; }
+
+        .timer-card {
+            padding: 28px 22px 24px;
+            border: 1px solid #303442;
+            border-radius: 24px;
+            background: rgb(19 21 28 / 92%);
+            box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
         }
 
         #roundCounter {
-            font-size: 25px;
-            margin-top: 60px;
-            margin-bottom: 00px;
-            height: 30px;
-            box-sizing: content-box;
-            line-height: 25px;
+            min-height: 24px;
+            color: #a9adba;
+            font-size: .95rem;
         }
 
         #status {
-            font-size: 50px;
-            margin-top: 0px;
-            margin-bottom: 0px;
-            height: 60px;
-            box-sizing: content-box;
-            line-height: 50px;
+            min-height: 43px;
+            margin-top: 8px;
+            color: #aeb4ff;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: .08em;
         }
 
         #timer {
-            font-size: 50px;
-            margin-top: 0px;
-            margin-bottom: 10px;
-            height: 60px;
-            box-sizing: content-box;
-            line-height: 50px;
+            margin: 4px 0 20px;
+            font-size: clamp(3.5rem, 18vw, 5.5rem);
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            letter-spacing: -.08em;
+            line-height: 1;
         }
 
-        #progressBar {
-            width: 200px;
-            margin: auto;
-            margin-bottom: 40px;
-            margin-top: 0px;
+        progress {
+            width: 100%;
+            height: 9px;
+            margin-bottom: 28px;
+            overflow: hidden;
+            border: 0;
+            border-radius: 999px;
+            background: #303442;
         }
 
-        #comment {
-            width: 300px;
-            margin: auto;
-            margin-bottom: 0px;
-            margin-top: 50px;
-            font-size: 12px;
-            line-height: 14px;
+        progress::-webkit-progress-bar { background: #303442; }
+        progress::-webkit-progress-value { background: #7d86ff; transition: width .2s linear; }
+        progress::-moz-progress-bar { background: #7d86ff; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
         }
+
+        .control-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-width: 132px;
+            padding: 0 22px;
+            font-weight: 700;
+        }
+
+        .control-button.secondary {
+            min-width: 54px;
+            padding: 0;
+            background: #343846;
+        }
+
+        .hint {
+            margin: 22px auto 0;
+            color: #818694;
+            font: .75rem/1.5 system-ui, sans-serif;
+        }
+
+        [hidden] { display: none !important; }
     </style>
-    <script>
-        let alarm = new Audio('alarm.mp3');
-        let alarmShort = new Audio('alarm_short.mp3');
-        // let workTime = 6000;
-        // let restTime = 4000;
-        // let pauseTime = 10000;
-        // let rounds = 2;
-        let workTime = 20000;
-        let restTime = 10000;
-        let pauseTime = 120000;
-        let rounds = 8;
-        let roundCounter = 1;
-        let timeLeft = 10000;
-        let status = "rest"; //rest, work or pause
-
-        // let startTime;
-        // let endTime;
-        let refreshLoop;
-
-        //Set duration für work timer
-        function setWorkDuration(timeChange) {
-            if (workTime + timeChange < 0) return
-
-            workTime = workTime + timeChange;
-            //Display time as MM:SS
-            let workTimeMinutes = workTime / (1000 * 60);
-            workTimeMinutes = Math.floor(workTimeMinutes);
-            workTimeMinutes = ('0' + workTimeMinutes).slice(-1);
-            let workTimeSeconds = (workTime / 1000) % 60;
-            workTimeSeconds = Math.round(workTimeSeconds);
-            workTimeSeconds = ('0' + workTimeSeconds).slice(-2);
-            let timerText = '0' + workTimeMinutes + ':' + workTimeSeconds;
-            workDuration.innerHTML = 'work ' + timerText;
-            console.log('workTime', workTime / 1000);
-
-        }
-        //Set duration für rest timer
-        function setRestDuration(timeChange) {
-            if (restTime + timeChange < 0) return
-
-            restTime = restTime + timeChange;
-            //Display time as MM:SS
-            let restTimeMinutes = restTime / (1000 * 60);
-            restTimeMinutes = Math.floor(restTimeMinutes);
-            restTimeMinutes = ('0' + restTimeMinutes).slice(-1);
-            let restTimeSeconds = (restTime / 1000) % 60;
-            restTimeSeconds = Math.round(restTimeSeconds);
-            restTimeSeconds = ('0' + restTimeSeconds).slice(-2);
-            let timerText = '0' + restTimeMinutes + ':' + restTimeSeconds;
-            restDuration.innerHTML = 'rest ' + timerText;
-            console.log('restTime', restTime / 1000);
-
-        }
-
-        //Set number of rounds
-        function setRounds(roundsChange) {
-            if (rounds + roundsChange < 1) return
-
-            rounds = rounds + roundsChange;
-            // //Display time as MM:SS
-            // let restTimeMinutes = restTime / (1000 * 60);
-            // restTimeMinutes = Math.floor(restTimeMinutes);
-            // restTimeMinutes = ('0' + restTimeMinutes).slice(-1);
-            // let restTimeSeconds = (restTime / 1000) % 60;
-            // restTimeSeconds = Math.round(restTimeSeconds);
-            // restTimeSeconds = ('0' + restTimeSeconds).slice(-2);
-            // let timerText = '0' + restTimeMinutes + ':' + restTimeSeconds;
-            document.querySelector('#rounds').innerHTML = rounds + ' rounds';
-            console.log('rounds', rounds);
-        }
-
-        //Set duration für pause timer
-        function setPauseDuration(timeChange) {
-            if (pauseTime + timeChange < 0) return
-
-            pauseTime = pauseTime + timeChange;
-            //Display time as MM:SS
-            let pauseTimeMinutes = pauseTime / (1000 * 60);
-            pauseTimeMinutes = Math.floor(pauseTimeMinutes);
-            pauseTimeMinutes = ('0' + pauseTimeMinutes).slice(-1);
-            let pauseTimeSeconds = (pauseTime / 1000) % 60;
-            pauseTimeSeconds = Math.round(pauseTimeSeconds);
-            pauseTimeSeconds = ('0' + pauseTimeSeconds).slice(-2);
-            let timerText = '0' + pauseTimeMinutes + ':' + pauseTimeSeconds;
-            pauseDuration.innerHTML = 'pause ' + timerText;
-            console.log('pauseTime', pauseTime / 1000);
-
-        }
-
-
-        function startTimer() {
-            alarm.play(); //play once to enable audio on Safari
-            alarmShort.play(); //play once to enable audio on Safari
-
-            displayStopButton();
-            console.log(status);
-
-            //refreshLoop starten, damit alle Anzeigen geupdatet werden und timeLeft -1000
-            refreshLoop = setInterval(refresh, 1000, restTime);
-
-
-
-            // //refreshLoop starten, damit alle Anzeigen geupdatet werden und timeLeft -1000
-            // switch (status) {
-            //     case 'rest':
-            //         refreshLoop = setInterval(refresh, 1000, restTime);
-            //         break;
-            //     case 'work':
-            //         refreshLoop = setInterval(refresh, 1000, workTime);
-            //         break;
-            //     case 'pause':
-            //         refreshLoop = setInterval(refresh, 1000, pauseTime);
-            //         break;
-            // }
-
-        }
-        function playAlarm() {
-            switch (timeLeft / 1000) {
-                case 3:
-                    alarmShort.play();
-                    break;
-                case 2:
-                    alarmShort.play();
-                    break;
-                case 1:
-                    alarmShort.play();
-                    break;
-                case 0:
-                    alarm.play();
-                    break;
-            }
-
-        }
-        function endRefreshLoop() {
-            if (timeLeft / 1000 == 0) {
-                // alarm.play();
-                // console.log('alarm abgespielt');
-                clearInterval(refreshLoop);
-                console.log('refreshLoop gestoppt');
-
-                //status umstellen
-                if (roundCounter == rounds) {
-                    status = 'pause';
-                } else {
-                    switch (status) {
-                        case 'rest':
-                            status = 'work';
-                            console.log('status umgestellt');
-                            break;
-                        case 'work':
-                            status = 'rest';
-                            break;
-                        case 'pause':
-                            status = 'rest';
-                            timeLeft = pauseTime;
-                            break;
-                    }
-                }
-
-                //timeLeft neu einstellen
-                switch (status) {
-                    case 'rest':
-                        timeLeft = restTime;
-                        console.log('switch timeLeft: rest');
-                        break;
-                    case 'work':
-                        timeLeft = workTime;
-                        console.log('switch timeLeft: work');
-                        break;
-                    case 'pause':
-                        timeLeft = pauseTime;
-                        console.log('switch timeLeft: pause');
-                        break;
-                }
-                console.log(timeLeft / 1000);
-
-                //roundsCounter weiter/zurückstellen
-                switch (status) {
-                    case 'work':
-                        roundCounter++;
-                        break;
-                    case 'pause':
-                        roundCounter = 0;
-                        break;
-                }
-                refreshLoop = setInterval(refresh, 1000, restTime);
-            }
-        }
-
-        function refresh() {
-            timeLeft = timeLeft - 1000;
-            displayRoundCounter();
-            displayStatus();
-            displayTimer();
-            displayProgressBar();
-            console.log(timeLeft / 1000);
-            playAlarm();
-            endRefreshLoop()
-
-        }
-
-        function displayStopButton() {
-            button.innerHTML = ('<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="pauseButton()"><i class="material-icons">pause</i></button ><button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="stopButton()"><i class="material-icons">stop</i></button >');
-        }
-
-        function displayStartButton() {
-            button.innerHTML = ('<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="startTimer()"><i class="material-icons">play_arrow</i></button >');
-        }
-
-        function displayRoundCounter() {
-            document.querySelector('#roundCounter').innerHTML = 'round ' + roundCounter + ' of ' + rounds;
-        }
-
-        function displayStatus() {
-            document.querySelector('#status').innerHTML = '>>' + status;
-        }
-
-        function displayTimer() {
-            let timeLeftMinutes = timeLeft / (1000 * 60);
-            timeLeftMinutes = Math.floor(timeLeftMinutes);
-            timeLeftMinutes = ('0' + timeLeftMinutes).slice(-1);
-            let timeLeftSeconds = (timeLeft / 1000) % 60;
-            timeLeftSeconds = Math.round(timeLeftSeconds);
-            timeLeftSeconds = ('0' + timeLeftSeconds).slice(-2);
-            let timerText = '0' + timeLeftMinutes + ':' + timeLeftSeconds;
-            // console.log(timerText);
-            document.querySelector('#timer').innerHTML = timerText;
-        }
-
-        function displayProgressBar() {
-            switch (status) {
-                case 'rest':
-                    document.querySelector('#progressBar1').MaterialProgress.setProgress(Math.round(100 - (timeLeft / restTime * 100)));
-                    break;
-                case 'work':
-                    document.querySelector('#progressBar1').MaterialProgress.setProgress(Math.round(100 - (timeLeft / workTime * 100)));
-                    break;
-                case 'pause':
-                    document.querySelector('#progressBar1').MaterialProgress.setProgress(Math.round(100 - (timeLeft / pauseTime * 100)));
-                    break;
-            }
-        }
-
-        function pauseButton() {
-            console.log('pause timer');
-            //   console.log(doRest);
-            //   console.log(doRest);
-            clearInterval(refreshLoop);
-            displayStartButton();
-        }
-
-        function stopButton() {
-            console.log('stop timer');
-            clearInterval(refreshLoop);
-            //   console.log(doRest);
-            roundCounter = 1;
-            timeLeft = 10000;
-            status = "rest"; //rest, work or pause
-            document.querySelector('#status').innerHTML = 'READY';
-            displayTimer();
-            //   console.log(doRest);
-
-            displayStartButton();
-        }
-    </script>
+    <script type="module" src="./app.mjs"></script>
 </head>
-
 <body>
-    <div id="wrapper">
-        <div id="header">
-            <h1>Workout-Timer</h1>
-        </div>
-        <div id="settings">
-            <div id="settingsWork" class="settings">
-                <button
-                    class="button-left mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setWorkDuration(-5000)">
-                    <i class="material-icons">remove</i>
-                </button>
+    <main>
+        <h1>Workout Timer</h1>
 
-                <div id="workDuration">work 00:20</div>
-
-                <button
-                    class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setWorkDuration(5000)">
-                    <i class="material-icons">add</i>
-                </button>
-            </div> <br>
-
-            <div id="settingsRest" class="settings">
-                <button
-                    class="button-left mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setRestDuration(-5000)">
-                    <i class="material-icons">remove</i>
-                </button>
-
-                <div id="restDuration">rest 00:10</div>
-
-                <button
-                    class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setRestDuration(5000)">
-                    <i class="material-icons">add</i>
-                </button>
-            </div> <br>
-
-            <div id="settingsRounds" class="settings">
-                <button
-                    class="button-left mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setRounds(-1)">
-                    <i class="material-icons">remove</i>
-                </button>
-
-                <div id="rounds">8 rounds</div>
-
-                <button
-                    class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setRounds(1)">
-                    <i class="material-icons">add</i>
-                </button>
-            </div> <br>
-
-            <div id="settingsPause" class="settings">
-                <button
-                    class="button-left mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setPauseDuration(-10000)">
-                    <i class="material-icons">remove</i>
-                </button>
-
-                <div id="pauseDuration">pause 02:00</div>
-
-                <button
-                    class="button-right mdl-button mdl-js-button mdl-button--primary mdl-button--fab mdl-button--mini-fab mdl-button--colored"
-                    onclick="setPauseDuration(10000)">
-                    <i class="material-icons">add</i>
-                </button>
+        <section class="settings" aria-label="Workout settings">
+            <div class="setting">
+                <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time">−</button>
+                <span id="workDuration" class="setting-value"></span>
+                <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time">+</button>
             </div>
+            <div class="setting">
+                <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce rest time">−</button>
+                <span id="restDuration" class="setting-value"></span>
+                <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase rest time">+</button>
+            </div>
+            <div class="setting">
+                <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds">−</button>
+                <span id="rounds" class="setting-value"></span>
+                <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds">+</button>
+            </div>
+            <div class="setting">
+                <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause">−</button>
+                <span id="pauseDuration" class="setting-value"></span>
+                <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause">+</button>
+            </div>
+        </section>
 
-        </div>
-        <div id="roundCounter">
-        </div>
-        <div id="status">
-            READY
-        </div>
-        <div id="timer">
-            00:00
-        </div>
-        <div id="progressBar">
-            <div id="progressBar1" class="mdl-progress mdl-js-progress"></div>
-        </div>
-        <div id="button">
-            <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="startTimer()">
-                <i class="material-icons">play_arrow</i>
-            </button>
-        </div>
-        <div id="comment"> Three separate adjustable timers and a round counter that run in a specific order, update the
-            time display and progress
-            bar and play a sound when finished (even on iOS devices!) <br> This PWA is managed with git and
-            automatically
-            deployed on netlify.</div>
+        <section class="timer-card" aria-label="Timer">
+            <div id="roundCounter" aria-live="polite"></div>
+            <div id="status">READY</div>
+            <div id="timer" role="timer" aria-live="off">00:00</div>
+            <progress id="progress" max="1" value="0" aria-label="Interval progress"></progress>
+            <div class="controls">
+                <button id="primaryButton" class="control-button" type="button">
+                    <span id="primaryIcon" aria-hidden="true">▶</span>
+                    <span id="primaryLabel">Start</span>
+                </button>
+                <button id="stopButton" class="control-button secondary" type="button" aria-label="Stop and reset" hidden>■</button>
+            </div>
+        </section>
 
-    </div>
-
+        <p class="hint">Rest → work for each round → set pause. The timer continues accurately when the tab is in the background.</p>
+    </main>
 </body>
-
 </html>
