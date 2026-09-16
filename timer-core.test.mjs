@@ -43,7 +43,8 @@ test('starts a fresh set after the pause', () => {
         set: 2,
         duration: defaults.restMs,
         rounds: 1,
-        sets: 2
+        sets: 2,
+        exercise: null
     });
 });
 
@@ -52,6 +53,31 @@ test('completes after the final work interval of the final set', () => {
 
     sequence.next();
     assert.equal(sequence.next().phase, PHASES.COMPLETE);
+});
+
+test('derives rounds and phase durations from a training plan', () => {
+    const sequence = new WorkoutSequence({
+        ...defaults,
+        rounds: 99,
+        exercises: [
+            { name: 'Squats', workMs: 45_000, restMs: 15_000 },
+            { name: 'Push-ups', workMs: 30_000, restMs: null }
+        ]
+    });
+
+    assert.deepEqual(sequence.snapshot(), {
+        phase: PHASES.REST,
+        round: 1,
+        set: 1,
+        duration: 15_000,
+        rounds: 2,
+        sets: defaults.sets,
+        exercise: { name: 'Squats', workMs: 45_000, restMs: 15_000 }
+    });
+    assert.equal(sequence.next().duration, 45_000);
+    sequence.next();
+    assert.equal(sequence.snapshot().exercise.name, 'Push-ups');
+    assert.equal(sequence.duration, defaults.restMs);
 });
 
 test('rejects zero durations and zero rounds', () => {
@@ -66,5 +92,9 @@ test('rejects zero durations and zero rounds', () => {
     assert.throws(
         () => new WorkoutSequence({ ...defaults, sets: 0 }),
         /sets must be a positive integer/
+    );
+    assert.throws(
+        () => new WorkoutSequence({ ...defaults, exercises: [{ name: '' }] }),
+        /must have a name/
     );
 });

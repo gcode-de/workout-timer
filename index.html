@@ -289,6 +289,22 @@
             letter-spacing: .13em;
         }
 
+        #status.exercise-status {
+            max-width: 100%;
+            padding: 7px 14px;
+            font-size: .95rem;
+            letter-spacing: .02em;
+            line-height: 1.25;
+            text-transform: none;
+        }
+
+        .next-exercise {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: .82rem;
+            font-weight: 680;
+        }
+
         #timer {
             margin: 18px 0 24px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -411,7 +427,8 @@
         .preference small { color: var(--subtle); font: .76rem/1.4 system-ui, sans-serif; }
 
         select,
-        input[type="text"] {
+        input[type="text"],
+        input[type="number"] {
             min-height: 40px;
             padding: 0 10px;
             border: 1px solid var(--border);
@@ -466,12 +483,131 @@
             font: .76rem/1.4 system-ui, sans-serif;
         }
 
+        .section-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .section-heading h3 { margin: 0; }
+
+        .plan-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .plan-name {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .section-help {
+            margin: -2px 0 14px;
+            color: var(--subtle);
+            text-align: left;
+            font-size: .75rem;
+            line-height: 1.45;
+        }
+
+        .exercise-list {
+            display: grid;
+            gap: 9px;
+        }
+
+        .exercise-empty {
+            padding: 18px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            color: var(--subtle);
+            font-size: .78rem;
+            line-height: 1.45;
+        }
+
+        .exercise-card {
+            display: grid;
+            gap: 10px;
+            padding: 11px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--secondary);
+        }
+
+        .exercise-main {
+            display: grid;
+            grid-template-columns: 24px 1fr 38px;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .exercise-index {
+            color: var(--subtle);
+            font-size: .72rem;
+            font-weight: 800;
+        }
+
+        .exercise-main input { width: 100%; }
+
+        .exercise-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+            align-items: end;
+        }
+
+        .exercise-details label {
+            display: grid;
+            gap: 4px;
+            color: var(--subtle);
+            text-align: left;
+            font-size: .65rem;
+            font-weight: 750;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+        }
+
+        .exercise-details input { width: 100%; min-width: 0; }
+
+        .exercise-order {
+            display: flex;
+            gap: 5px;
+        }
+
+        .exercise-order .compact-icon-button,
+        .exercise-main .compact-icon-button {
+            width: 38px;
+            min-width: 38px;
+            min-height: 38px;
+        }
+
+        .exercise-add {
+            display: grid;
+            grid-template-columns: 1fr 72px 72px 42px;
+            gap: 7px;
+            margin-top: 10px;
+        }
+
+        .exercise-add input { width: 100%; min-width: 0; }
+
+        .plan-message {
+            min-height: 18px;
+            margin: 8px 0 0;
+            color: var(--subtle);
+            text-align: left;
+            font-size: .75rem;
+        }
+
         @media (max-width: 380px) {
             body { padding-inline: 14px; }
             .settings { grid-template-columns: 1fr; }
             .setting:last-child { grid-column: auto; }
             .configuration-save { grid-template-columns: 1fr; }
             .configuration-save button { width: 100%; }
+            .exercise-add { grid-template-columns: 1fr 1fr 42px; }
+            .exercise-add .exercise-name-input { grid-column: 1 / -1; }
+            .exercise-details { grid-template-columns: 1fr 1fr; }
+            .exercise-order { grid-column: 1 / -1; justify-content: flex-end; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -529,6 +665,7 @@
         <section id="timerCard" class="timer-card" data-phase="idle" aria-label="Timer">
             <div id="roundCounter" aria-live="polite"></div>
             <div id="status">READY</div>
+            <div id="nextExercise" class="next-exercise" aria-live="polite" hidden></div>
             <div id="timer" role="timer" aria-live="off">00:00</div>
             <progress id="progress" max="1" value="0" aria-label="Interval progress"></progress>
             <div class="controls">
@@ -574,6 +711,33 @@
                         <small id="wakeLockSupport">Prevent the display from sleeping during a workout.</small>
                     </label>
                 </div>
+            </section>
+            <section class="settings-section" aria-labelledby="trainingPlanTitle">
+                <div class="section-heading">
+                    <h3 id="trainingPlanTitle">Training plan</h3>
+                    <div class="plan-actions">
+                        <button id="importPlanButton" class="compact-icon-button" data-plan-control type="button" aria-label="Import training plan" title="Import JSON">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0L8 7m4-4 4 4"/><path d="M5 17v3h14v-3"/></svg>
+                        </button>
+                        <button id="exportPlanButton" class="compact-icon-button" data-plan-control type="button" aria-label="Export training plan" title="Export JSON">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 17v3h14v-3"/></svg>
+                        </button>
+                        <input id="importPlanInput" type="file" accept="application/json,.json" hidden>
+                    </div>
+                </div>
+                <input id="planName" class="plan-name" data-plan-control type="text" maxlength="40" placeholder="Plan name" aria-label="Training plan name">
+                <p class="section-help">Exercises replace WORK. Optional times override the global work and preparation times.</p>
+                <div id="exerciseList" class="exercise-list"></div>
+                <div id="exerciseEmpty" class="exercise-empty">No exercises yet. The timer uses its normal interval mode.</div>
+                <form id="addExerciseForm" class="exercise-add">
+                    <input id="newExerciseName" class="exercise-name-input" data-plan-control type="text" maxlength="60" required placeholder="Exercise name" aria-label="New exercise name">
+                    <input id="newExerciseWork" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="Work s" aria-label="Optional work seconds">
+                    <input id="newExerciseRest" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="Prep s" aria-label="Optional preparation seconds">
+                    <button class="compact-icon-button" data-plan-control type="submit" aria-label="Add exercise" title="Add exercise">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg>
+                    </button>
+                </form>
+                <p id="planMessage" class="plan-message" aria-live="polite"></p>
             </section>
             <section class="settings-section" aria-labelledby="configurationsTitle">
                 <h3 id="configurationsTitle">Configurations</h3>

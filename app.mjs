@@ -3,11 +3,13 @@ import { formatDuration, PHASES, WorkoutSequence } from './timer-core.mjs';
 const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
 const defaultConfig = {
+    planName: 'My workout',
     workMs: 20_000,
     restMs: 10_000,
     pauseMs: 120_000,
     rounds: 8,
-    sets: 3
+    sets: 3,
+    exercises: []
 };
 
 const builtInConfigurations = [
@@ -16,18 +18,56 @@ const builtInConfigurations = [
     { id: 'strength', name: 'Strength Training', workMs: 45_000, restMs: 75_000, pauseMs: 180_000, rounds: 4, sets: 3 }
 ];
 
+function createId() {
+    return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function isValidExercise(exercise) {
+    const validOptionalDuration = (value) => value == null || (Number.isFinite(value) && value >= 1_000);
+    return exercise
+        && typeof exercise.name === 'string'
+        && Boolean(exercise.name.trim())
+        && validOptionalDuration(exercise.workMs)
+        && validOptionalDuration(exercise.restMs);
+}
+
+function normalizeExercises(exercises = []) {
+    if (!Array.isArray(exercises)) return [];
+    return exercises.map((exercise) => ({
+        id: typeof exercise.id === 'string' && exercise.id ? exercise.id : createId(),
+        name: exercise.name.trim(),
+        workMs: exercise.workMs ?? null,
+        restMs: exercise.restMs ?? null
+    }));
+}
+
 function isValidConfiguration(value) {
     return value
         && ['workMs', 'restMs', 'pauseMs'].every((key) => Number.isFinite(value[key]) && value[key] >= 1_000)
-        && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1);
+        && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1)
+        && (value.exercises == null || (Array.isArray(value.exercises) && value.exercises.every(isValidExercise)));
+}
+
+function normalizeConfiguration(value) {
+    if (!isValidConfiguration(value)) return null;
+    const exercises = normalizeExercises(value.exercises);
+    return {
+        ...defaultConfig,
+        ...value,
+        planName: typeof value.planName === 'string' && value.planName.trim()
+            ? value.planName.trim()
+            : defaultConfig.planName,
+        exercises,
+        rounds: exercises.length || value.rounds
+    };
 }
 
 function loadActiveConfig() {
     try {
         const saved = JSON.parse(localStorage.getItem(ACTIVE_CONFIG_KEY));
-        return isValidConfiguration(saved) ? { ...defaultConfig, ...saved } : { ...defaultConfig };
+        return normalizeConfiguration(saved) ?? { ...defaultConfig, exercises: [] };
     } catch {
-        return { ...defaultConfig };
+        return { ...defaultConfig, exercises: [] };
     }
 }
 
@@ -35,7 +75,9 @@ function loadCustomConfigurations() {
     try {
         const saved = JSON.parse(localStorage.getItem(CONFIGURATIONS_KEY));
         return Array.isArray(saved)
-            ? saved.filter((item) => typeof item.name === 'string' && item.name.trim() && isValidConfiguration(item))
+            ? saved
+                .filter((item) => typeof item.name === 'string' && item.name.trim() && isValidConfiguration(item))
+                .map((item) => ({ ...normalizeConfiguration(item), id: item.id || createId(), name: item.name.trim() }))
             : [];
     } catch {
         return [];
@@ -74,6 +116,7 @@ const elements = {
     sets: document.querySelector('#sets'),
     roundCounter: document.querySelector('#roundCounter'),
     status: document.querySelector('#status'),
+    nextExercise: document.querySelector('#nextExercise'),
     timer: document.querySelector('#timer'),
     timerCard: document.querySelector('#timerCard'),
     progress: document.querySelector('#progress'),
@@ -96,7 +139,18 @@ const elements = {
     configurationName: document.querySelector('#configurationName'),
     saveConfigurationForm: document.querySelector('#saveConfigurationForm'),
     configurationMessage: document.querySelector('#configurationMessage'),
-    configurationControls: [...document.querySelectorAll('[data-configuration-control]')]
+    configurationControls: [...document.querySelectorAll('[data-configuration-control]')],
+    planName: document.querySelector('#planName'),
+    exerciseList: document.querySelector('#exerciseList'),
+    exerciseEmpty: document.querySelector('#exerciseEmpty'),
+    addExerciseForm: document.querySelector('#addExerciseForm'),
+    newExerciseName: document.querySelector('#newExerciseName'),
+    newExerciseWork: document.querySelector('#newExerciseWork'),
+    newExerciseRest: document.querySelector('#newExerciseRest'),
+    importPlanButton: document.querySelector('#importPlanButton'),
+    importPlanInput: document.querySelector('#importPlanInput'),
+    exportPlanButton: document.querySelector('#exportPlanButton'),
+    planMessage: document.querySelector('#planMessage')
 };
 
 let mode = 'idle';
@@ -217,8 +271,32 @@ function updateSettings() {
 }
 
 function updatePhaseDisplay() {
-    const { phase, round, rounds, set, sets } = sequence.snapshot();
-    elements.status.textContent = mode === 'idle' ? 'READY' : mode === 'complete' ? 'DONE' : phase.toUpperCase();
+    const { phase, round, rounds, set, sets, exercise } = sequence.snapshot();
+    const hasPlan = config.exercises.length > 0;
+    elements.status.classList.toggle('exercise-status', hasPlan && phase === PHASES.WORK && mode !== 'complete');
+    elements.nextExercise.hidden = true;
+
+    if (mode === 'idle') {
+        elements.status.textContent = 'READY';
+        if (hasPlan) {
+            elements.nextExercise.textContent = `First: ${config.exercises[0].name}`;
+            elements.nextExercise.hidden = false;
+        }
+    } else if (mode === 'complete') {
+        elements.status.textContent = 'DONE';
+    } else if (hasPlan && phase === PHASES.WORK) {
+        elements.status.textContent = exercise.name;
+    } else {
+        elements.status.textContent = phase.toUpperCase();
+        if (hasPlan && phase === PHASES.REST) {
+            elements.nextExercise.textContent = `Next: ${exercise.name}`;
+            elements.nextExercise.hidden = false;
+        } else if (hasPlan && phase === PHASES.PAUSE) {
+            elements.nextExercise.textContent = `Next set: ${config.exercises[0].name}`;
+            elements.nextExercise.hidden = false;
+        }
+    }
+
     elements.timerCard.dataset.phase = mode === 'idle' ? 'idle' : phase;
     if (phase === PHASES.COMPLETE) {
         elements.roundCounter.textContent = 'workout complete';
@@ -247,9 +325,13 @@ function updateControls() {
     elements.primaryButton.setAttribute('aria-label', elements.primaryLabel.textContent);
     elements.stopButton.hidden = !workoutActive;
     elements.settingButtons.forEach((button) => {
-        button.disabled = workoutActive;
+        button.disabled = workoutActive
+            || (button.dataset.setting === 'rounds' && config.exercises.length > 0);
     });
     elements.configurationControls.forEach((control) => {
+        control.disabled = workoutActive;
+    });
+    document.querySelectorAll('[data-plan-control]').forEach((control) => {
         control.disabled = workoutActive;
     });
     updateDeleteConfigurationButton();
@@ -367,6 +449,105 @@ function changeSetting(name, amount) {
     updateSettings();
 }
 
+function optionalSeconds(input) {
+    if (!input.value) return null;
+    const seconds = Number(input.value);
+    return Number.isFinite(seconds) && seconds >= 1 ? Math.round(seconds * 1000) : null;
+}
+
+function resetAfterPlanChange(message = '') {
+    config.rounds = config.exercises.length || Math.max(1, config.rounds);
+    sequence.updateConfig(config);
+    sequence.reset();
+    mode = 'idle';
+    remainingMs = sequence.duration;
+    saveActiveConfig();
+    updateSettings();
+    renderExerciseList();
+    render();
+    elements.timer.textContent = '00:00';
+    elements.planMessage.textContent = message;
+}
+
+function exerciseIcon(path) {
+    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+}
+
+function renderExerciseList() {
+    elements.exerciseList.replaceChildren();
+    elements.exerciseEmpty.hidden = config.exercises.length > 0;
+    elements.planName.value = config.planName;
+
+    config.exercises.forEach((exercise, index) => {
+        const card = document.createElement('article');
+        card.className = 'exercise-card';
+        card.innerHTML = `
+            <div class="exercise-main">
+                <span class="exercise-index">${index + 1}</span>
+                <input class="exercise-name" data-plan-control type="text" maxlength="60" aria-label="Exercise ${index + 1} name">
+                <button class="compact-icon-button danger exercise-delete" data-plan-control type="button" aria-label="Delete ${index + 1}" title="Delete exercise">
+                    ${exerciseIcon('M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5')}
+                </button>
+            </div>
+            <div class="exercise-details">
+                <label>Work seconds<input class="exercise-work" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="${config.workMs / 1000}"></label>
+                <label>Prep seconds<input class="exercise-rest" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="${config.restMs / 1000}"></label>
+                <div class="exercise-order">
+                    <button class="compact-icon-button exercise-up" data-plan-control type="button" aria-label="Move ${index + 1} up" title="Move up" ${index === 0 ? 'disabled' : ''}>${exerciseIcon('m6 14 6-6 6 6')}</button>
+                    <button class="compact-icon-button exercise-down" data-plan-control type="button" aria-label="Move ${index + 1} down" title="Move down" ${index === config.exercises.length - 1 ? 'disabled' : ''}>${exerciseIcon('m6 10 6 6 6-6')}</button>
+                </div>
+            </div>`;
+
+        const nameInput = card.querySelector('.exercise-name');
+        const workInput = card.querySelector('.exercise-work');
+        const restInput = card.querySelector('.exercise-rest');
+        nameInput.value = exercise.name;
+        workInput.value = exercise.workMs == null ? '' : exercise.workMs / 1000;
+        restInput.value = exercise.restMs == null ? '' : exercise.restMs / 1000;
+
+        nameInput.addEventListener('change', () => {
+            const name = nameInput.value.trim();
+            if (!name) {
+                nameInput.value = exercise.name;
+                return;
+            }
+            exercise.name = name;
+            resetAfterPlanChange('Exercise updated.');
+        });
+
+        workInput.addEventListener('change', () => {
+            exercise.workMs = optionalSeconds(workInput);
+            resetAfterPlanChange('Exercise timing updated.');
+        });
+
+        restInput.addEventListener('change', () => {
+            exercise.restMs = optionalSeconds(restInput);
+            resetAfterPlanChange('Exercise timing updated.');
+        });
+
+        card.querySelector('.exercise-delete').addEventListener('click', () => {
+            config.exercises.splice(index, 1);
+            resetAfterPlanChange(`Removed “${exercise.name}”.`);
+        });
+
+        card.querySelector('.exercise-up').addEventListener('click', () => {
+            if (index === 0) return;
+            [config.exercises[index - 1], config.exercises[index]] = [config.exercises[index], config.exercises[index - 1]];
+            resetAfterPlanChange('Exercise moved.');
+        });
+
+        card.querySelector('.exercise-down').addEventListener('click', () => {
+            if (index >= config.exercises.length - 1) return;
+            [config.exercises[index], config.exercises[index + 1]] = [config.exercises[index + 1], config.exercises[index]];
+            resetAfterPlanChange('Exercise moved.');
+        });
+
+        elements.exerciseList.append(card);
+    });
+
+    updateControls();
+}
+
 function renderConfigurationOptions(selectedId = '') {
     elements.configurationSelect.replaceChildren();
 
@@ -406,15 +587,18 @@ function updateDeleteConfigurationButton() {
 
 function applyConfiguration(item) {
     if (!item || mode === 'running' || mode === 'paused') return;
-    for (const key of ['workMs', 'restMs', 'pauseMs', 'rounds', 'sets']) {
-        config[key] = item[key];
-    }
+    const normalized = normalizeConfiguration({ ...defaultConfig, ...item, planName: item.name ?? item.planName });
+    if (!normalized) return;
+
+    for (const key of ['planName', 'workMs', 'restMs', 'pauseMs', 'rounds', 'sets']) config[key] = normalized[key];
+    config.exercises = normalized.exercises.map((exercise) => ({ ...exercise }));
     sequence.updateConfig(config);
     sequence.reset();
     mode = 'idle';
     remainingMs = sequence.duration;
     saveActiveConfig();
     updateSettings();
+    renderExerciseList();
     render();
     elements.timer.textContent = '00:00';
     elements.configurationMessage.textContent = `Loaded “${item.name}”.`;
@@ -424,20 +608,27 @@ function saveNamedConfiguration(name) {
     const cleanName = name.trim();
     if (!cleanName) return;
 
+    config.planName = cleanName;
+    saveActiveConfig();
     let item = customConfigurations.find((entry) => entry.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase());
     if (item) {
-        Object.assign(item, config, { name: cleanName });
+        Object.assign(item, config, {
+            name: cleanName,
+            exercises: config.exercises.map((exercise) => ({ ...exercise }))
+        });
     } else {
         item = {
-            id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()),
+            id: createId(),
             name: cleanName,
-            ...config
+            ...config,
+            exercises: config.exercises.map((exercise) => ({ ...exercise }))
         };
         customConfigurations.push(item);
     }
 
     saveCustomConfigurations();
     renderConfigurationOptions(`custom:${item.id}`);
+    renderExerciseList();
     elements.configurationName.value = '';
     elements.configurationMessage.textContent = `Saved “${cleanName}”.`;
 }
@@ -554,6 +745,81 @@ elements.saveConfigurationForm.addEventListener('submit', (event) => {
     saveNamedConfiguration(elements.configurationName.value);
 });
 
+elements.planName.addEventListener('change', () => {
+    const name = elements.planName.value.trim();
+    config.planName = name || defaultConfig.planName;
+    elements.planName.value = config.planName;
+    saveActiveConfig();
+});
+
+elements.addExerciseForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (mode === 'running' || mode === 'paused') return;
+
+    const name = elements.newExerciseName.value.trim();
+    if (!name) return;
+    config.exercises.push({
+        id: createId(),
+        name,
+        workMs: optionalSeconds(elements.newExerciseWork),
+        restMs: optionalSeconds(elements.newExerciseRest)
+    });
+    elements.newExerciseName.value = '';
+    elements.newExerciseWork.value = '';
+    elements.newExerciseRest.value = '';
+    resetAfterPlanChange(`Added “${name}”.`);
+});
+
+elements.importPlanButton.addEventListener('click', () => {
+    elements.importPlanInput.click();
+});
+
+elements.importPlanInput.addEventListener('change', async () => {
+    const [file] = elements.importPlanInput.files;
+    if (!file) return;
+
+    try {
+        const imported = JSON.parse(await file.text());
+        const source = imported.configuration ?? imported;
+        const name = String(imported.name ?? source.planName ?? 'Imported workout').trim();
+        const normalized = normalizeConfiguration({ ...source, planName: name });
+        if (!normalized) throw new Error('Invalid workout plan');
+
+        applyConfiguration({ ...normalized, name });
+        saveNamedConfiguration(name);
+        elements.planMessage.textContent = `Imported and saved “${name}”.`;
+    } catch {
+        elements.planMessage.textContent = 'This file is not a valid workout plan.';
+    } finally {
+        elements.importPlanInput.value = '';
+    }
+});
+
+elements.exportPlanButton.addEventListener('click', () => {
+    const payload = {
+        format: 'workout-timer-plan',
+        version: 1,
+        name: config.planName,
+        configuration: {
+            planName: config.planName,
+            workMs: config.workMs,
+            restMs: config.restMs,
+            pauseMs: config.pauseMs,
+            rounds: config.rounds,
+            sets: config.sets,
+            exercises: config.exercises.map(({ name, workMs, restMs }) => ({ name, workMs, restMs }))
+        }
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${config.planName.toLocaleLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'workout-plan'}.json`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    elements.planMessage.textContent = `Exported “${config.planName}”.`;
+});
+
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') stopAllSettingRepeats();
     if (document.visibilityState === 'visible' && mode === 'running') {
@@ -577,5 +843,6 @@ applyTheme();
 updateCapabilityLabels();
 renderConfigurationOptions();
 updateSettings();
+renderExerciseList();
 render();
 elements.timer.textContent = '00:00';

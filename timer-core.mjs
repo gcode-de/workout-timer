@@ -19,6 +19,27 @@ function assertCount(value, name) {
     }
 }
 
+function normalizeExercises(exercises = []) {
+    if (!Array.isArray(exercises)) {
+        throw new TypeError('exercises must be an array');
+    }
+
+    return exercises.map((exercise, index) => {
+        if (typeof exercise?.name !== 'string' || !exercise.name.trim()) {
+            throw new TypeError(`exercise ${index + 1} must have a name`);
+        }
+        if (exercise.workMs != null) assertDuration(exercise.workMs, `exercise ${index + 1} workMs`);
+        if (exercise.restMs != null) assertDuration(exercise.restMs, `exercise ${index + 1} restMs`);
+
+        return {
+            ...exercise,
+            name: exercise.name.trim(),
+            workMs: exercise.workMs ?? null,
+            restMs: exercise.restMs ?? null
+        };
+    });
+}
+
 export function formatDuration(milliseconds) {
     const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
     const minutes = Math.floor(totalSeconds / 60);
@@ -28,19 +49,27 @@ export function formatDuration(milliseconds) {
 }
 
 export class WorkoutSequence {
-    constructor({ workMs, restMs, pauseMs, rounds, sets }) {
-        this.updateConfig({ workMs, restMs, pauseMs, rounds, sets });
+    constructor({ workMs, restMs, pauseMs, rounds, sets, exercises = [] }) {
+        this.updateConfig({ workMs, restMs, pauseMs, rounds, sets, exercises });
         this.reset();
     }
 
-    updateConfig({ workMs, restMs, pauseMs, rounds, sets }) {
+    updateConfig({ workMs, restMs, pauseMs, rounds, sets, exercises = [] }) {
         assertDuration(workMs, 'workMs');
         assertDuration(restMs, 'restMs');
         assertDuration(pauseMs, 'pauseMs');
         assertCount(rounds, 'rounds');
         assertCount(sets, 'sets');
 
-        this.config = { workMs, restMs, pauseMs, rounds, sets };
+        const normalizedExercises = normalizeExercises(exercises);
+        this.config = {
+            workMs,
+            restMs,
+            pauseMs,
+            rounds: normalizedExercises.length || rounds,
+            sets,
+            exercises: normalizedExercises
+        };
     }
 
     reset() {
@@ -50,9 +79,10 @@ export class WorkoutSequence {
     }
 
     get duration() {
+        const exercise = this.config.exercises[this.round - 1];
         const durationByPhase = {
-            [PHASES.REST]: this.config.restMs,
-            [PHASES.WORK]: this.config.workMs,
+            [PHASES.REST]: exercise?.restMs ?? this.config.restMs,
+            [PHASES.WORK]: exercise?.workMs ?? this.config.workMs,
             [PHASES.PAUSE]: this.config.pauseMs,
             [PHASES.COMPLETE]: 0
         };
@@ -88,7 +118,8 @@ export class WorkoutSequence {
             set: this.set,
             duration: this.duration,
             rounds: this.config.rounds,
-            sets: this.config.sets
+            sets: this.config.sets,
+            exercise: this.config.exercises[this.round - 1] ?? null
         };
     }
 }
