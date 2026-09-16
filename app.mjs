@@ -1,4 +1,4 @@
-import { formatDuration, PHASES, WorkoutSequence } from './timer-core.mjs';
+import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
 
 const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
@@ -94,7 +94,8 @@ const PREFERENCES_KEY = 'workoutTimerPreferences';
 const defaultPreferences = {
     theme: 'system',
     vibration: true,
-    keepAwake: true
+    keepAwake: true,
+    voiceAnnouncements: false
 };
 
 function loadPreferences() {
@@ -133,6 +134,8 @@ const elements = {
     vibrationSupport: document.querySelector('#vibrationSupport'),
     wakeLockSetting: document.querySelector('#wakeLockSetting'),
     wakeLockSupport: document.querySelector('#wakeLockSupport'),
+    voiceSetting: document.querySelector('#voiceSetting'),
+    voiceSupport: document.querySelector('#voiceSupport'),
     configurationSelect: document.querySelector('#configurationSelect'),
     loadConfigurationButton: document.querySelector('#loadConfigurationButton'),
     deleteConfigurationButton: document.querySelector('#deleteConfigurationButton'),
@@ -160,6 +163,7 @@ let phaseEndsAt = 0;
 let lastCountdownSecond = null;
 let audioUnlocked = false;
 let wakeLock = null;
+let lastAnnouncementKey = null;
 
 function savePreferences() {
     try {
@@ -211,6 +215,11 @@ function updateCapabilityLabels() {
     } else {
         elements.wakeLockSupport.textContent = 'Prevent the display from sleeping during a workout.';
     }
+
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+        elements.voiceSetting.disabled = true;
+        elements.voiceSupport.textContent = 'Voice announcements are not supported by this browser.';
+    }
 }
 
 async function acquireWakeLock() {
@@ -241,6 +250,34 @@ function safelyPlay(audio) {
     audio.currentTime = 0;
     const result = audio.play();
     result?.catch(() => {});
+}
+
+function speak(text) {
+    if (!preferences.voiceAnnouncements || !text) return;
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = document.documentElement.lang || navigator.language || 'en';
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+}
+
+function announceCurrentPhase() {
+    const snapshot = sequence.snapshot();
+    const key = `${snapshot.phase}:${snapshot.set}:${snapshot.round}`;
+    if (key === lastAnnouncementKey) return;
+
+    const exerciseName = snapshot.exercise?.name ?? '';
+    const nextExerciseName = snapshot.phase === PHASES.PAUSE
+        ? config.exercises[0]?.name ?? ''
+        : exerciseName;
+    speak(phaseAnnouncement({
+        phase: snapshot.phase,
+        exerciseName,
+        nextExerciseName
+    }));
+    lastAnnouncementKey = key;
 }
 
 function unlockAudio() {
@@ -358,6 +395,7 @@ function finishWorkout() {
     clearInterval(intervalId);
     intervalId = null;
     releaseWakeLock();
+    announceCurrentPhase();
 }
 
 function syncExpiredPhases(now) {
@@ -375,6 +413,7 @@ function syncExpiredPhases(now) {
     } while (now >= phaseEndsAt);
 
     lastCountdownSecond = null;
+    announceCurrentPhase();
     return false;
 }
 
@@ -405,6 +444,7 @@ function startTimer() {
     intervalId = window.setInterval(tick, 200);
     acquireWakeLock();
     render();
+    announceCurrentPhase();
 }
 
 function pauseTimer() {
@@ -428,6 +468,8 @@ function stopTimer() {
     sequence.reset();
     remainingMs = sequence.duration;
     lastCountdownSecond = null;
+    lastAnnouncementKey = null;
+    window.speechSynthesis?.cancel();
     releaseWakeLock();
     elements.progress.value = 0;
     render();
@@ -461,6 +503,8 @@ function resetAfterPlanChange(message = '') {
     sequence.reset();
     mode = 'idle';
     remainingMs = sequence.duration;
+    lastAnnouncementKey = null;
+    window.speechSynthesis?.cancel();
     saveActiveConfig();
     updateSettings();
     renderExerciseList();
@@ -596,6 +640,8 @@ function applyConfiguration(item) {
     sequence.reset();
     mode = 'idle';
     remainingMs = sequence.duration;
+    lastAnnouncementKey = null;
+    window.speechSynthesis?.cancel();
     saveActiveConfig();
     updateSettings();
     renderExerciseList();
@@ -721,6 +767,18 @@ elements.wakeLockSetting.addEventListener('change', () => {
     else releaseWakeLock();
 });
 
+elements.voiceSetting.addEventListener('change', () => {
+    preferences.voiceAnnouncements = elements.voiceSetting.checked;
+    savePreferences();
+    window.speechSynthesis?.cancel();
+    lastAnnouncementKey = null;
+
+    if (preferences.voiceAnnouncements) {
+        if (mode === 'running' || mode === 'paused') announceCurrentPhase();
+        else speak('Voice announcements enabled');
+    }
+});
+
 elements.configurationSelect.addEventListener('change', () => {
     updateDeleteConfigurationButton();
     elements.configurationMessage.textContent = '';
@@ -839,6 +897,7 @@ if ('serviceWorker' in navigator) {
 elements.themeSetting.value = preferences.theme;
 elements.vibrationSetting.checked = preferences.vibration;
 elements.wakeLockSetting.checked = preferences.keepAwake;
+elements.voiceSetting.checked = preferences.voiceAnnouncements;
 applyTheme();
 updateCapabilityLabels();
 renderConfigurationOptions();

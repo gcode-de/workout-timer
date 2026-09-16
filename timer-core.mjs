@@ -48,6 +48,18 @@ export function formatDuration(milliseconds) {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+export function phaseAnnouncement({ phase, exerciseName = '', nextExerciseName = '' }) {
+    if (phase === PHASES.WORK) return exerciseName || 'Work';
+    if (phase === PHASES.REST) return nextExerciseName ? `Rest. Next: ${nextExerciseName}` : 'Rest';
+    if (phase === PHASES.PAUSE) {
+        return nextExerciseName
+            ? `Set complete. Next set starts with ${nextExerciseName}`
+            : 'Set complete';
+    }
+    if (phase === PHASES.COMPLETE) return 'Workout complete';
+    return '';
+}
+
 export class WorkoutSequence {
     constructor({ workMs, restMs, pauseMs, rounds, sets, exercises = [] }) {
         this.updateConfig({ workMs, restMs, pauseMs, rounds, sets, exercises });

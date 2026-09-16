@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDuration, PHASES, WorkoutSequence } from './timer-core.mjs';
+import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
 
 const defaults = { workMs: 20_000, restMs: 10_000, pauseMs: 120_000, rounds: 3, sets: 2 };
 
@@ -8,6 +8,20 @@ test('formats durations without wrapping after nine minutes', () => {
     assert.equal(formatDuration(0), '00:00');
     assert.equal(formatDuration(20_000), '00:20');
     assert.equal(formatDuration(610_000), '10:10');
+});
+
+test('builds concise voice announcements for plans and interval mode', () => {
+    assert.equal(phaseAnnouncement({ phase: PHASES.WORK, exerciseName: 'Squats' }), 'Squats');
+    assert.equal(
+        phaseAnnouncement({ phase: PHASES.REST, nextExerciseName: 'Push-ups' }),
+        'Rest. Next: Push-ups'
+    );
+    assert.equal(
+        phaseAnnouncement({ phase: PHASES.PAUSE, nextExerciseName: 'Squats' }),
+        'Set complete. Next set starts with Squats'
+    );
+    assert.equal(phaseAnnouncement({ phase: PHASES.WORK }), 'Work');
+    assert.equal(phaseAnnouncement({ phase: PHASES.COMPLETE }), 'Workout complete');
 });
 
 test('runs rest and work for every round before the set pause', () => {
