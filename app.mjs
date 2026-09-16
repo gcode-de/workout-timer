@@ -75,6 +75,7 @@ const elements = {
     roundCounter: document.querySelector('#roundCounter'),
     status: document.querySelector('#status'),
     timer: document.querySelector('#timer'),
+    timerCard: document.querySelector('#timerCard'),
     progress: document.querySelector('#progress'),
     primaryButton: document.querySelector('#primaryButton'),
     primaryIcon: document.querySelector('#primaryIcon'),
@@ -208,16 +209,17 @@ function unlockAudio() {
 }
 
 function updateSettings() {
-    elements.workDuration.textContent = `work ${formatDuration(config.workMs)}`;
-    elements.restDuration.textContent = `rest ${formatDuration(config.restMs)}`;
-    elements.pauseDuration.textContent = `pause ${formatDuration(config.pauseMs)}`;
-    elements.rounds.textContent = `${config.rounds} ${config.rounds === 1 ? 'round' : 'rounds'}`;
-    elements.sets.textContent = `${config.sets} ${config.sets === 1 ? 'set' : 'sets'}`;
+    elements.workDuration.textContent = formatDuration(config.workMs);
+    elements.restDuration.textContent = formatDuration(config.restMs);
+    elements.pauseDuration.textContent = formatDuration(config.pauseMs);
+    elements.rounds.textContent = config.rounds;
+    elements.sets.textContent = config.sets;
 }
 
 function updatePhaseDisplay() {
     const { phase, round, rounds, set, sets } = sequence.snapshot();
     elements.status.textContent = mode === 'idle' ? 'READY' : mode === 'complete' ? 'DONE' : phase.toUpperCase();
+    elements.timerCard.dataset.phase = mode === 'idle' ? 'idle' : phase;
     if (phase === PHASES.COMPLETE) {
         elements.roundCounter.textContent = 'workout complete';
     } else if (phase === PHASES.PAUSE) {

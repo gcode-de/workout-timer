@@ -20,57 +20,63 @@
     <style>
         :root {
             color-scheme: dark;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            --page: #0b0c0f;
-            --page-glow: #20243a;
-            --surface: rgb(19 21 28 / 92%);
-            --surface-soft: rgb(19 21 28 / 85%);
-            --border: #303442;
-            --text: #f4f4f5;
-            --muted: #a9adba;
-            --subtle: #818694;
-            --accent: #5965f2;
-            --accent-hover: #707af5;
-            --accent-soft: #aeb4ff;
-            --secondary: #343846;
-            --track: #303442;
+            font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            --page: #080a10;
+            --page-glow: #20203d;
+            --surface: rgb(20 22 32 / 88%);
+            --surface-soft: rgb(25 27 39 / 76%);
+            --border: rgb(255 255 255 / 10%);
+            --text: #f7f7fb;
+            --muted: #aaadbd;
+            --subtle: #85899b;
+            --accent: #7c6df2;
+            --accent-hover: #9185f7;
+            --accent-soft: #c3bcff;
+            --secondary: rgb(255 255 255 / 8%);
+            --track: rgb(255 255 255 / 10%);
+            --danger: #fb7185;
+            --shadow: 0 24px 70px rgb(0 0 0 / 35%);
             background: var(--page);
             color: var(--text);
         }
 
         :root[data-theme="light"] {
             color-scheme: light;
-            --page: #f4f5fb;
-            --page-glow: #d9dcff;
-            --surface: rgb(255 255 255 / 94%);
-            --surface-soft: rgb(255 255 255 / 88%);
-            --border: #d8dae5;
-            --text: #171821;
-            --muted: #5f6372;
-            --subtle: #686d7d;
-            --accent: #4854df;
-            --accent-hover: #3541ca;
-            --accent-soft: #353fab;
-            --secondary: #e5e7f0;
-            --track: #dfe1ea;
+            --page: #f5f5fb;
+            --page-glow: #dcdcff;
+            --surface: rgb(255 255 255 / 88%);
+            --surface-soft: rgb(255 255 255 / 72%);
+            --border: rgb(26 28 44 / 10%);
+            --text: #171822;
+            --muted: #646778;
+            --subtle: #767a8b;
+            --accent: #6657df;
+            --accent-hover: #5446ca;
+            --accent-soft: #5548c2;
+            --secondary: rgb(28 30 45 / 7%);
+            --track: rgb(28 30 45 / 10%);
+            --danger: #dc3854;
+            --shadow: 0 24px 70px rgb(52 48 91 / 16%);
         }
 
         @media (prefers-color-scheme: light) {
             :root:not([data-theme="dark"]) {
                 color-scheme: light;
-                --page: #f4f5fb;
-                --page-glow: #d9dcff;
-                --surface: rgb(255 255 255 / 94%);
-                --surface-soft: rgb(255 255 255 / 88%);
-                --border: #d8dae5;
-                --text: #171821;
-                --muted: #5f6372;
-                --subtle: #686d7d;
-                --accent: #4854df;
-                --accent-hover: #3541ca;
-                --accent-soft: #353fab;
-                --secondary: #e5e7f0;
-                --track: #dfe1ea;
+                --page: #f5f5fb;
+                --page-glow: #dcdcff;
+                --surface: rgb(255 255 255 / 88%);
+                --surface-soft: rgb(255 255 255 / 72%);
+                --border: rgb(26 28 44 / 10%);
+                --text: #171822;
+                --muted: #646778;
+                --subtle: #767a8b;
+                --accent: #6657df;
+                --accent-hover: #5446ca;
+                --accent-soft: #5548c2;
+                --secondary: rgb(28 30 45 / 7%);
+                --track: rgb(28 30 45 / 10%);
+                --danger: #dc3854;
+                --shadow: 0 24px 70px rgb(52 48 91 / 16%);
             }
         }
 
@@ -80,109 +86,210 @@
             min-height: 100svh;
             margin: 0;
             padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
-            background: radial-gradient(circle at top, var(--page-glow) 0, var(--page) 42%);
+            background:
+                radial-gradient(circle at 12% 5%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 34%),
+                radial-gradient(circle at 88% 28%, color-mix(in srgb, #20c7d9 12%, transparent), transparent 28%),
+                linear-gradient(165deg, var(--page-glow), var(--page) 48%);
             color: var(--text);
+            transition: color .25s ease, background-color .25s ease;
         }
 
         main {
-            width: min(100%, 440px);
+            width: min(100%, 480px);
             margin: 0 auto;
             text-align: center;
         }
 
         .topbar {
             display: grid;
-            grid-template-columns: 44px 1fr 44px;
+            grid-template-columns: 48px 1fr 48px;
             align-items: center;
-            margin: 12px 0 28px;
+            margin: 8px 0 26px;
         }
 
         h1 {
             margin: 0;
-            font-size: clamp(2rem, 9vw, 3rem);
-            letter-spacing: -.06em;
+            font-size: clamp(2rem, 8vw, 2.65rem);
+            font-weight: 780;
+            letter-spacing: -.055em;
+            line-height: 1;
+        }
+
+        .brand-subtitle {
+            display: block;
+            margin-top: 8px;
+            color: var(--subtle);
+            font-size: .68rem;
+            font-weight: 750;
+            letter-spacing: .16em;
+            text-transform: uppercase;
         }
 
         .settings {
             display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-bottom: 32px;
+            margin-bottom: 20px;
         }
 
         .setting {
             display: grid;
-            grid-template-columns: 48px 1fr 48px;
+            grid-template-columns: 42px 1fr 42px;
             align-items: center;
-            min-height: 54px;
-            padding: 3px;
+            min-height: 68px;
+            padding: 7px;
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             background: var(--surface-soft);
+            box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
+            backdrop-filter: blur(18px);
         }
 
-        .setting-value { font-size: 1rem; }
+        .setting:last-child { grid-column: 1 / -1; }
+
+        .setting-copy {
+            display: grid;
+            gap: 3px;
+        }
+
+        .setting-label {
+            color: var(--subtle);
+            font-size: .62rem;
+            font-weight: 750;
+            letter-spacing: .13em;
+            text-transform: uppercase;
+        }
+
+        .setting-value {
+            font-size: 1.05rem;
+            font-weight: 720;
+            font-variant-numeric: tabular-nums;
+        }
 
         button {
             min-width: 44px;
             min-height: 44px;
             border: 0;
-            border-radius: 13px;
+            border-radius: 14px;
             color: #fff;
             background: var(--accent);
             font: inherit;
             cursor: pointer;
             touch-action: manipulation;
+            transition: transform .15s ease, background .15s ease, opacity .15s ease;
         }
 
-        button:hover { background: var(--accent-hover); }
+        button:hover { background: var(--accent-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(0) scale(.97); }
         button:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 3px; }
         button:disabled { cursor: not-allowed; opacity: .35; }
 
         .icon-button {
             padding: 0;
             color: var(--text);
-            background: transparent;
-            font-size: 1.35rem;
+            border: 1px solid var(--border);
+            background: var(--surface-soft);
+            box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
         }
 
         .icon-button:hover { background: var(--secondary); }
 
-        .timer-card {
-            padding: 28px 22px 24px;
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            background: var(--surface);
-            box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
+        .icon-button svg,
+        .compact-icon-button svg {
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
         }
+
+        [data-setting] {
+            min-width: 38px;
+            min-height: 38px;
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            color: var(--text);
+            background: var(--secondary);
+            font-size: 1.2rem;
+        }
+
+        [data-setting]:hover { background: color-mix(in srgb, var(--accent) 24%, var(--secondary)); }
+
+        .timer-card {
+            --phase-color: #8b7cf6;
+            --phase-ink: #fff;
+            position: relative;
+            isolation: isolate;
+            padding: 30px 26px 26px;
+            overflow: hidden;
+            border: 1px solid color-mix(in srgb, var(--phase-color) 28%, var(--border));
+            border-radius: 30px;
+            background:
+                linear-gradient(145deg, color-mix(in srgb, var(--phase-color) 10%, transparent), transparent 45%),
+                var(--surface);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(24px);
+            transition: border-color .35s ease, background .35s ease;
+        }
+
+        .timer-card::before {
+            position: absolute;
+            z-index: -1;
+            top: -150px;
+            left: 50%;
+            width: 330px;
+            height: 260px;
+            border-radius: 50%;
+            background: var(--phase-color);
+            filter: blur(100px);
+            opacity: .16;
+            transform: translateX(-50%);
+            content: "";
+            transition: background .35s ease;
+        }
+
+        .timer-card[data-phase="rest"] { --phase-color: #22d3ee; --phase-ink: #07363e; }
+        .timer-card[data-phase="work"] { --phase-color: #fb7185; }
+        .timer-card[data-phase="pause"] { --phase-color: #fbbf24; --phase-ink: #402d02; }
+        .timer-card[data-phase="complete"] { --phase-color: #34d399; --phase-ink: #063d2c; }
 
         #roundCounter {
             min-height: 24px;
             color: var(--muted);
-            font-size: .95rem;
+            font-size: .78rem;
+            font-weight: 700;
+            letter-spacing: .07em;
+            text-transform: uppercase;
         }
 
         #status {
-            min-height: 43px;
-            margin-top: 8px;
-            color: var(--accent-soft);
-            font-size: 1.8rem;
-            font-weight: 700;
-            letter-spacing: .08em;
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            margin-top: 11px;
+            padding: 0 12px;
+            border: 1px solid color-mix(in srgb, var(--phase-color) 35%, transparent);
+            border-radius: 999px;
+            color: var(--phase-color);
+            background: color-mix(in srgb, var(--phase-color) 10%, transparent);
+            font-size: .72rem;
+            font-weight: 800;
+            letter-spacing: .13em;
         }
 
         #timer {
-            margin: 4px 0 20px;
-            font-size: clamp(3.5rem, 18vw, 5.5rem);
+            margin: 18px 0 24px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: clamp(3.75rem, 18vw, 5.65rem);
             font-variant-numeric: tabular-nums;
-            font-weight: 700;
-            letter-spacing: -.08em;
+            font-weight: 760;
+            letter-spacing: -.09em;
             line-height: 1;
+            text-shadow: 0 4px 24px color-mix(in srgb, var(--phase-color) 18%, transparent);
         }
 
         progress {
             width: 100%;
-            height: 9px;
-            margin-bottom: 28px;
+            height: 7px;
+            margin-bottom: 30px;
             overflow: hidden;
             border: 0;
             border-radius: 999px;
@@ -190,8 +297,8 @@
         }
 
         progress::-webkit-progress-bar { background: var(--track); }
-        progress::-webkit-progress-value { background: var(--accent); transition: width .2s linear; }
-        progress::-moz-progress-bar { background: var(--accent); }
+        progress::-webkit-progress-value { background: var(--phase-color); transition: width .2s linear, background .35s ease; }
+        progress::-moz-progress-bar { background: var(--phase-color); }
 
         .controls {
             display: flex;
@@ -204,33 +311,41 @@
             align-items: center;
             justify-content: center;
             gap: 10px;
-            min-width: 132px;
-            padding: 0 22px;
-            font-weight: 700;
+            min-width: 146px;
+            min-height: 50px;
+            padding: 0 24px;
+            border-radius: 16px;
+            color: var(--phase-ink);
+            background: var(--phase-color);
+            box-shadow: 0 10px 28px color-mix(in srgb, var(--phase-color) 25%, transparent);
+            font-weight: 760;
         }
+
+        .control-button:hover { background: color-mix(in srgb, var(--phase-color) 82%, white); }
 
         .control-button.secondary {
             min-width: 54px;
             padding: 0;
             color: var(--text);
             background: var(--secondary);
+            box-shadow: none;
         }
 
         .hint {
-            margin: 22px auto 0;
+            margin: 20px auto 0;
             color: var(--subtle);
-            font: .75rem/1.5 system-ui, sans-serif;
+            font: .74rem/1.55 system-ui, sans-serif;
         }
 
         dialog {
-            width: min(calc(100% - 32px), 420px);
+            width: min(calc(100% - 32px), 460px);
             max-height: min(90svh, 720px);
             padding: 0;
             border: 1px solid var(--border);
-            border-radius: 22px;
+            border-radius: 28px;
             color: var(--text);
             background: var(--surface);
-            box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+            box-shadow: 0 28px 90px rgb(0 0 0 / 48%);
             overflow: auto;
         }
 
@@ -239,7 +354,7 @@
             backdrop-filter: blur(4px);
         }
 
-        .dialog-content { padding: 24px; }
+        .dialog-content { padding: 26px; }
 
         .dialog-header {
             display: flex;
@@ -248,7 +363,7 @@
             margin-bottom: 20px;
         }
 
-        .dialog-header h2 { margin: 0; font-size: 1.35rem; }
+        .dialog-header h2 { margin: 0; font-size: 1.5rem; letter-spacing: -.03em; }
 
         .preference-list {
             display: grid;
@@ -272,12 +387,13 @@
             grid-template-columns: 1fr auto;
             gap: 6px 18px;
             align-items: center;
-            padding: 14px 0;
+            padding: 15px 0;
             border-bottom: 1px solid var(--border);
             text-align: left;
         }
 
         .preference:last-child { border-bottom: 0; }
+        .preference > span { font-weight: 680; }
         .preference small { color: var(--subtle); font: .76rem/1.4 system-ui, sans-serif; }
 
         select,
@@ -285,7 +401,7 @@
             min-height: 40px;
             padding: 0 10px;
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             color: var(--text);
             background: var(--secondary);
             font: inherit;
@@ -304,12 +420,26 @@
             gap: 8px;
         }
 
+        .compact-icon-button {
+            display: inline-grid;
+            place-items: center;
+            width: 42px;
+            min-width: 42px;
+            min-height: 42px;
+            padding: 0;
+            border: 1px solid var(--border);
+            color: var(--text);
+            background: var(--secondary);
+        }
+
+        .compact-icon-button:hover { background: color-mix(in srgb, var(--accent) 24%, var(--secondary)); }
+        .compact-icon-button.danger:hover { color: white; background: var(--danger); }
+
         .configuration-save {
             grid-template-columns: 1fr auto;
             margin-top: 10px;
         }
 
-        .configuration-controls button,
         .configuration-save button {
             padding: 0 14px;
         }
@@ -323,8 +453,15 @@
         }
 
         @media (max-width: 380px) {
-            .configuration-controls { grid-template-columns: 1fr 1fr; }
-            .configuration-controls select { grid-column: 1 / -1; }
+            body { padding-inline: 14px; }
+            .settings { grid-template-columns: 1fr; }
+            .setting:last-child { grid-column: auto; }
+            .configuration-save { grid-template-columns: 1fr; }
+            .configuration-save button { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before { scroll-behavior: auto !important; transition-duration: .01ms !important; }
         }
 
         [hidden] { display: none !important; }
@@ -335,39 +472,47 @@
     <main>
         <header class="topbar">
             <span aria-hidden="true"></span>
-            <h1>Workout Timer</h1>
-            <button id="openSettingsButton" class="icon-button" type="button" aria-label="Open settings">⚙</button>
+            <div>
+                <h1>Workout Timer</h1>
+                <span class="brand-subtitle">Interval training</span>
+            </div>
+            <button id="openSettingsButton" class="icon-button" type="button" aria-label="Open settings" title="Settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M12 15.3a3.3 3.3 0 1 0 0-6.6 3.3 3.3 0 0 0 0 6.6Z"/>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/>
+                </svg>
+            </button>
         </header>
 
         <section class="settings" aria-label="Workout settings">
             <div class="setting">
                 <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time">−</button>
-                <span id="workDuration" class="setting-value"></span>
+                <span class="setting-copy"><span class="setting-label">Work</span><strong id="workDuration" class="setting-value"></strong></span>
                 <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time">+</button>
             </div>
             <div class="setting">
                 <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce rest time">−</button>
-                <span id="restDuration" class="setting-value"></span>
+                <span class="setting-copy"><span class="setting-label">Rest</span><strong id="restDuration" class="setting-value"></strong></span>
                 <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase rest time">+</button>
             </div>
             <div class="setting">
                 <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds">−</button>
-                <span id="rounds" class="setting-value"></span>
+                <span class="setting-copy"><span class="setting-label">Rounds</span><strong id="rounds" class="setting-value"></strong></span>
                 <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds">+</button>
             </div>
             <div class="setting">
                 <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce sets">−</button>
-                <span id="sets" class="setting-value"></span>
+                <span class="setting-copy"><span class="setting-label">Sets</span><strong id="sets" class="setting-value"></strong></span>
                 <button type="button" data-setting="sets" data-change="1" aria-label="Increase sets">+</button>
             </div>
             <div class="setting">
                 <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause">−</button>
-                <span id="pauseDuration" class="setting-value"></span>
+                <span class="setting-copy"><span class="setting-label">Set pause</span><strong id="pauseDuration" class="setting-value"></strong></span>
                 <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause">+</button>
             </div>
         </section>
 
-        <section class="timer-card" aria-label="Timer">
+        <section id="timerCard" class="timer-card" data-phase="idle" aria-label="Timer">
             <div id="roundCounter" aria-live="polite"></div>
             <div id="status">READY</div>
             <div id="timer" role="timer" aria-live="off">00:00</div>
@@ -388,7 +533,9 @@
         <div class="dialog-content">
             <header class="dialog-header">
                 <h2 id="settingsTitle">Settings</h2>
-                <button id="closeSettingsButton" class="icon-button" type="button" aria-label="Close settings">×</button>
+                <button id="closeSettingsButton" class="icon-button" type="button" aria-label="Close settings" title="Close">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>
+                </button>
             </header>
             <section class="settings-section" aria-labelledby="preferencesTitle">
                 <h3 id="preferencesTitle">Preferences</h3>
@@ -418,8 +565,16 @@
                 <h3 id="configurationsTitle">Configurations</h3>
                 <div class="configuration-controls">
                     <select id="configurationSelect" data-configuration-control aria-label="Saved configuration"></select>
-                    <button id="loadConfigurationButton" data-configuration-control type="button">Load</button>
-                    <button id="deleteConfigurationButton" data-configuration-control type="button">Delete</button>
+                    <button id="loadConfigurationButton" class="compact-icon-button" data-configuration-control type="button" aria-label="Load configuration" title="Load configuration">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 17v3h14v-3"/>
+                        </svg>
+                    </button>
+                    <button id="deleteConfigurationButton" class="compact-icon-button danger" data-configuration-control type="button" aria-label="Delete configuration" title="Delete configuration">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 7h16M9 7V4h6v3m3 0-1 13H7L6 7m4 4v5m4-5v5"/>
+                        </svg>
+                    </button>
                 </div>
                 <form id="saveConfigurationForm" class="configuration-save">
                     <input id="configurationName" data-configuration-control type="text" maxlength="40" required placeholder="My workout" aria-label="Configuration name">
