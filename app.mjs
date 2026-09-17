@@ -148,8 +148,6 @@ const elements = {
     exerciseEmpty: document.querySelector('#exerciseEmpty'),
     addExerciseForm: document.querySelector('#addExerciseForm'),
     newExerciseName: document.querySelector('#newExerciseName'),
-    newExerciseWork: document.querySelector('#newExerciseWork'),
-    newExerciseRest: document.querySelector('#newExerciseRest'),
     importPlanButton: document.querySelector('#importPlanButton'),
     importPlanInput: document.querySelector('#importPlanInput'),
     exportPlanButton: document.querySelector('#exportPlanButton'),
@@ -491,13 +489,7 @@ function changeSetting(name, amount) {
     updateSettings();
 }
 
-function optionalSeconds(input) {
-    if (!input.value) return null;
-    const seconds = Number(input.value);
-    return Number.isFinite(seconds) && seconds >= 1 ? Math.round(seconds * 1000) : null;
-}
-
-function resetAfterPlanChange(message = '') {
+function resetAfterPlanChange(message = '', { renderList = true } = {}) {
     config.rounds = config.exercises.length || Math.max(1, config.rounds);
     sequence.updateConfig(config);
     sequence.reset();
@@ -507,7 +499,7 @@ function resetAfterPlanChange(message = '') {
     window.speechSynthesis?.cancel();
     saveActiveConfig();
     updateSettings();
-    renderExerciseList();
+    if (renderList) renderExerciseList();
     render();
     elements.timer.textContent = '00:00';
     elements.planMessage.textContent = message;
@@ -515,6 +507,59 @@ function resetAfterPlanChange(message = '') {
 
 function exerciseIcon(path) {
     return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${path}"/></svg>`;
+}
+
+function exerciseTimingMarkup(key, label) {
+    return `
+        <div class="exercise-timing" data-timing="${key}">
+            <div class="exercise-timing-header">
+                <span>${label}</span>
+                <button class="exercise-use-default" data-plan-control type="button">Use default</button>
+            </div>
+            <div class="exercise-stepper">
+                <button class="exercise-time-button exercise-time-minus" data-plan-control type="button">${exerciseIcon('M5 12h14')}</button>
+                <output class="exercise-time-output">
+                    <span class="exercise-time-value"></span>
+                    <span class="exercise-time-source"></span>
+                </output>
+                <button class="exercise-time-button exercise-time-plus" data-plan-control type="button">${exerciseIcon('M5 12h14M12 5v14')}</button>
+            </div>
+        </div>`;
+}
+
+function wireExerciseTiming(card, exercise, key, fallbackMs, label) {
+    const control = card.querySelector(`[data-timing="${key}"]`);
+    const minusButton = control.querySelector('.exercise-time-minus');
+    const plusButton = control.querySelector('.exercise-time-plus');
+    const defaultButton = control.querySelector('.exercise-use-default');
+    const value = control.querySelector('.exercise-time-value');
+    const source = control.querySelector('.exercise-time-source');
+
+    minusButton.setAttribute('aria-label', `Reduce ${exercise.name} ${label.toLocaleLowerCase()} time`);
+    plusButton.setAttribute('aria-label', `Increase ${exercise.name} ${label.toLocaleLowerCase()} time`);
+    defaultButton.setAttribute('aria-label', `Use default ${label.toLocaleLowerCase()} time for ${exercise.name}`);
+
+    const refresh = () => {
+        const isCustom = exercise[key] != null;
+        value.textContent = formatDuration(exercise[key] ?? fallbackMs);
+        source.textContent = isCustom ? 'Custom' : 'Default';
+        defaultButton.hidden = !isCustom;
+    };
+
+    const adjust = (deltaMs) => {
+        exercise[key] = Math.max(1_000, (exercise[key] ?? fallbackMs) + deltaMs);
+        resetAfterPlanChange(`${label} time updated.`, { renderList: false });
+        refresh();
+    };
+
+    bindRepeatingAction(minusButton, () => adjust(-5_000));
+    bindRepeatingAction(plusButton, () => adjust(5_000));
+    defaultButton.addEventListener('click', () => {
+        exercise[key] = null;
+        resetAfterPlanChange(`${label} time now uses the default.`, { renderList: false });
+        refresh();
+    });
+    refresh();
 }
 
 function renderExerciseList() {
@@ -534,8 +579,8 @@ function renderExerciseList() {
                 </button>
             </div>
             <div class="exercise-details">
-                <label>Work seconds<input class="exercise-work" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="${config.workMs / 1000}"></label>
-                <label>Prep seconds<input class="exercise-rest" data-plan-control type="number" min="1" step="5" inputmode="numeric" placeholder="${config.restMs / 1000}"></label>
+                ${exerciseTimingMarkup('workMs', 'Work')}
+                ${exerciseTimingMarkup('restMs', 'Prep')}
                 <div class="exercise-order">
                     <button class="compact-icon-button exercise-up" data-plan-control type="button" aria-label="Move ${index + 1} up" title="Move up" ${index === 0 ? 'disabled' : ''}>${exerciseIcon('m6 14 6-6 6 6')}</button>
                     <button class="compact-icon-button exercise-down" data-plan-control type="button" aria-label="Move ${index + 1} down" title="Move down" ${index === config.exercises.length - 1 ? 'disabled' : ''}>${exerciseIcon('m6 10 6 6 6-6')}</button>
@@ -543,11 +588,7 @@ function renderExerciseList() {
             </div>`;
 
         const nameInput = card.querySelector('.exercise-name');
-        const workInput = card.querySelector('.exercise-work');
-        const restInput = card.querySelector('.exercise-rest');
         nameInput.value = exercise.name;
-        workInput.value = exercise.workMs == null ? '' : exercise.workMs / 1000;
-        restInput.value = exercise.restMs == null ? '' : exercise.restMs / 1000;
 
         nameInput.addEventListener('change', () => {
             const name = nameInput.value.trim();
@@ -556,18 +597,11 @@ function renderExerciseList() {
                 return;
             }
             exercise.name = name;
-            resetAfterPlanChange('Exercise updated.');
+            resetAfterPlanChange('Exercise updated.', { renderList: false });
         });
 
-        workInput.addEventListener('change', () => {
-            exercise.workMs = optionalSeconds(workInput);
-            resetAfterPlanChange('Exercise timing updated.');
-        });
-
-        restInput.addEventListener('change', () => {
-            exercise.restMs = optionalSeconds(restInput);
-            resetAfterPlanChange('Exercise timing updated.');
-        });
+        wireExerciseTiming(card, exercise, 'workMs', config.workMs, 'Work');
+        wireExerciseTiming(card, exercise, 'restMs', config.restMs, 'Prep');
 
         card.querySelector('.exercise-delete').addEventListener('click', () => {
             config.exercises.splice(index, 1);
@@ -679,57 +713,64 @@ function saveNamedConfiguration(name) {
     elements.configurationMessage.textContent = `Saved “${cleanName}”.`;
 }
 
-const activeSettingPresses = new Map();
+const activeAdjustmentPresses = new Map();
 
-function repeatSettingChange(button, state) {
-    if (activeSettingPresses.get(button) !== state || button.disabled) return;
+function repeatAdjustment(button, state) {
+    if (activeAdjustmentPresses.get(button) !== state || button.disabled) return;
 
-    changeSetting(button.dataset.setting, Number(button.dataset.change));
+    state.action();
     const elapsed = performance.now() - state.startedAt;
     const delay = elapsed > 2_000 ? 45 : elapsed > 1_000 ? 65 : 90;
-    state.timerId = window.setTimeout(() => repeatSettingChange(button, state), delay);
+    state.timerId = window.setTimeout(() => repeatAdjustment(button, state), delay);
 }
 
-function stopSettingRepeat(button) {
-    const state = activeSettingPresses.get(button);
+function stopAdjustmentRepeat(button) {
+    const state = activeAdjustmentPresses.get(button);
     if (!state) return;
 
     clearTimeout(state.timerId);
-    activeSettingPresses.delete(button);
+    activeAdjustmentPresses.delete(button);
 }
 
-function stopAllSettingRepeats() {
-    for (const button of activeSettingPresses.keys()) {
-        stopSettingRepeat(button);
+function stopAllAdjustmentRepeats() {
+    for (const button of activeAdjustmentPresses.keys()) {
+        stopAdjustmentRepeat(button);
     }
 }
 
-elements.settingButtons.forEach((button) => {
+function bindRepeatingAction(button, action) {
     button.title = 'Press and hold to adjust quickly';
 
     button.addEventListener('pointerdown', (event) => {
         if (event.button !== 0 || button.disabled) return;
         event.preventDefault();
-        stopSettingRepeat(button);
+        stopAdjustmentRepeat(button);
         button.setPointerCapture?.(event.pointerId);
-        changeSetting(button.dataset.setting, Number(button.dataset.change));
+        action();
 
         const state = {
+            action,
             startedAt: performance.now(),
             timerId: null
         };
-        state.timerId = window.setTimeout(() => repeatSettingChange(button, state), 380);
-        activeSettingPresses.set(button, state);
+        state.timerId = window.setTimeout(() => repeatAdjustment(button, state), 380);
+        activeAdjustmentPresses.set(button, state);
     });
 
-    button.addEventListener('pointerup', () => stopSettingRepeat(button));
-    button.addEventListener('pointercancel', () => stopSettingRepeat(button));
-    button.addEventListener('lostpointercapture', () => stopSettingRepeat(button));
+    button.addEventListener('pointerup', () => stopAdjustmentRepeat(button));
+    button.addEventListener('pointercancel', () => stopAdjustmentRepeat(button));
+    button.addEventListener('lostpointercapture', () => stopAdjustmentRepeat(button));
 
     button.addEventListener('click', (event) => {
         if (event.detail === 0 || !('PointerEvent' in window)) {
-            changeSetting(button.dataset.setting, Number(button.dataset.change));
+            action();
         }
+    });
+}
+
+elements.settingButtons.forEach((button) => {
+    bindRepeatingAction(button, () => {
+        changeSetting(button.dataset.setting, Number(button.dataset.change));
     });
 });
 
@@ -829,12 +870,10 @@ elements.addExerciseForm.addEventListener('submit', (event) => {
     config.exercises.push({
         id: createId(),
         name,
-        workMs: optionalSeconds(elements.newExerciseWork),
-        restMs: optionalSeconds(elements.newExerciseRest)
+        workMs: null,
+        restMs: null
     });
     elements.newExerciseName.value = '';
-    elements.newExerciseWork.value = '';
-    elements.newExerciseRest.value = '';
     resetAfterPlanChange(`Added “${name}”.`);
 });
 
@@ -889,14 +928,14 @@ elements.exportPlanButton.addEventListener('click', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') stopAllSettingRepeats();
+    if (document.visibilityState === 'hidden') stopAllAdjustmentRepeats();
     if (document.visibilityState === 'visible' && mode === 'running') {
         tick();
         acquireWakeLock();
     }
 });
 
-window.addEventListener('blur', stopAllSettingRepeats);
+window.addEventListener('blur', stopAllAdjustmentRepeats);
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
