@@ -308,6 +308,16 @@
             font-weight: 680;
         }
 
+        .exercise-note {
+            max-width: 36ch;
+            margin: 8px auto 0;
+            color: var(--subtle);
+            font-size: .76rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
         #timer {
             margin: 18px 0 24px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -440,7 +450,8 @@
 
         select,
         input[type="text"],
-        input[type="number"] {
+        input[type="number"],
+        textarea {
             min-height: 40px;
             padding: 0 10px;
             border: 1px solid var(--border);
@@ -448,6 +459,12 @@
             color: var(--text);
             background: var(--secondary);
             font: inherit;
+        }
+
+        textarea {
+            padding-block: 9px;
+            line-height: 1.4;
+            resize: vertical;
         }
 
         input[type="checkbox"] {
@@ -682,6 +699,25 @@
 
         .exercise-add input { width: 100%; min-width: 0; }
 
+        .exercise-notes-label {
+            display: grid;
+            min-width: 0;
+            gap: 5px;
+            color: var(--subtle);
+            text-align: left;
+            font-size: .65rem;
+            font-weight: 750;
+            letter-spacing: .07em;
+            text-transform: uppercase;
+        }
+
+        .exercise-notes {
+            width: 100%;
+            min-width: 0;
+            min-height: 62px;
+            text-transform: none;
+        }
+
         .plan-message {
             min-height: 18px;
             margin: 8px 0 0;
@@ -756,6 +792,7 @@
             <div id="roundCounter" aria-live="polite"></div>
             <div id="status">READY</div>
             <div id="nextExercise" class="next-exercise" aria-live="polite" hidden></div>
+            <div id="exerciseNote" class="exercise-note" aria-live="polite" hidden></div>
             <div id="timer" role="timer" aria-live="off">00:00</div>
             <progress id="progress" max="1" value="0" aria-label="Interval progress"></progress>
             <div class="controls">

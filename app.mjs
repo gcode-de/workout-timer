@@ -28,7 +28,8 @@ function isValidExercise(exercise) {
         && typeof exercise.name === 'string'
         && Boolean(exercise.name.trim())
         && validOptionalDuration(exercise.workMs)
-        && validOptionalDuration(exercise.restMs);
+        && validOptionalDuration(exercise.restMs)
+        && (exercise.notes == null || typeof exercise.notes === 'string');
 }
 
 function normalizeExercises(exercises = []) {
@@ -37,7 +38,8 @@ function normalizeExercises(exercises = []) {
         id: typeof exercise.id === 'string' && exercise.id ? exercise.id : createId(),
         name: exercise.name.trim(),
         workMs: exercise.workMs ?? null,
-        restMs: exercise.restMs ?? null
+        restMs: exercise.restMs ?? null,
+        notes: typeof exercise.notes === 'string' ? exercise.notes.slice(0, 500) : ''
     }));
 }
 
@@ -118,6 +120,7 @@ const elements = {
     roundCounter: document.querySelector('#roundCounter'),
     status: document.querySelector('#status'),
     nextExercise: document.querySelector('#nextExercise'),
+    exerciseNote: document.querySelector('#exerciseNote'),
     timer: document.querySelector('#timer'),
     timerCard: document.querySelector('#timerCard'),
     progress: document.querySelector('#progress'),
@@ -310,6 +313,7 @@ function updatePhaseDisplay() {
     const hasPlan = config.exercises.length > 0;
     elements.status.classList.toggle('exercise-status', hasPlan && phase === PHASES.WORK && mode !== 'complete');
     elements.nextExercise.hidden = true;
+    elements.exerciseNote.hidden = true;
 
     if (mode === 'idle') {
         elements.status.textContent = 'READY';
@@ -330,6 +334,14 @@ function updatePhaseDisplay() {
             elements.nextExercise.textContent = `Next set: ${config.exercises[0].name}`;
             elements.nextExercise.hidden = false;
         }
+    }
+
+    const noteExercise = mode === 'idle' || phase === PHASES.PAUSE
+        ? config.exercises[0]
+        : exercise;
+    if (mode !== 'complete' && noteExercise?.notes?.trim()) {
+        elements.exerciseNote.textContent = noteExercise.notes.trim();
+        elements.exerciseNote.hidden = false;
     }
 
     elements.timerCard.dataset.phase = mode === 'idle' ? 'idle' : phase;
@@ -585,10 +597,16 @@ function renderExerciseList() {
                     <button class="compact-icon-button exercise-up" data-plan-control type="button" aria-label="Move ${index + 1} up" title="Move up" ${index === 0 ? 'disabled' : ''}>${exerciseIcon('m6 14 6-6 6 6')}</button>
                     <button class="compact-icon-button exercise-down" data-plan-control type="button" aria-label="Move ${index + 1} down" title="Move down" ${index === config.exercises.length - 1 ? 'disabled' : ''}>${exerciseIcon('m6 10 6 6 6-6')}</button>
                 </div>
-            </div>`;
+            </div>
+            <label class="exercise-notes-label">
+                <span>Notes</span>
+                <textarea class="exercise-notes" data-plan-control rows="2" maxlength="500" placeholder="Weight, reps, technique cues…" aria-label="Notes for exercise ${index + 1}"></textarea>
+            </label>`;
 
         const nameInput = card.querySelector('.exercise-name');
+        const notesInput = card.querySelector('.exercise-notes');
         nameInput.value = exercise.name;
+        notesInput.value = exercise.notes;
 
         nameInput.addEventListener('change', () => {
             const name = nameInput.value.trim();
@@ -598,6 +616,12 @@ function renderExerciseList() {
             }
             exercise.name = name;
             resetAfterPlanChange('Exercise updated.', { renderList: false });
+        });
+
+        notesInput.addEventListener('input', () => {
+            exercise.notes = notesInput.value;
+            saveActiveConfig();
+            updatePhaseDisplay();
         });
 
         wireExerciseTiming(card, exercise, 'workMs', config.workMs, 'Work');
@@ -871,7 +895,8 @@ elements.addExerciseForm.addEventListener('submit', (event) => {
         id: createId(),
         name,
         workMs: null,
-        restMs: null
+        restMs: null,
+        notes: ''
     });
     elements.newExerciseName.value = '';
     resetAfterPlanChange(`Added “${name}”.`);
@@ -914,7 +939,7 @@ elements.exportPlanButton.addEventListener('click', () => {
             pauseMs: config.pauseMs,
             rounds: config.rounds,
             sets: config.sets,
-            exercises: config.exercises.map(({ name, workMs, restMs }) => ({ name, workMs, restMs }))
+            exercises: config.exercises.map(({ name, workMs, restMs, notes }) => ({ name, workMs, restMs, notes }))
         }
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

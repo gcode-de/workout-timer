@@ -74,7 +74,7 @@ test('derives rounds and phase durations from a training plan', () => {
         ...defaults,
         rounds: 99,
         exercises: [
-            { name: 'Squats', workMs: 45_000, restMs: 15_000 },
+            { name: 'Squats', workMs: 45_000, restMs: 15_000, notes: 'Keep knees tracking over toes' },
             { name: 'Push-ups', workMs: 30_000, restMs: null }
         ]
     });
@@ -86,7 +86,12 @@ test('derives rounds and phase durations from a training plan', () => {
         duration: 15_000,
         rounds: 2,
         sets: defaults.sets,
-        exercise: { name: 'Squats', workMs: 45_000, restMs: 15_000 }
+        exercise: {
+            name: 'Squats',
+            workMs: 45_000,
+            restMs: 15_000,
+            notes: 'Keep knees tracking over toes'
+        }
     });
     assert.equal(sequence.next().duration, 45_000);
     sequence.next();
