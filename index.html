@@ -185,6 +185,8 @@
         button:disabled { cursor: not-allowed; opacity: .35; }
 
         .icon-button {
+            display: inline-grid;
+            place-items: center;
             padding: 0;
             color: var(--text);
             border: 1px solid var(--border);
@@ -196,6 +198,7 @@
 
         .icon-button svg,
         .compact-icon-button svg {
+            display: block;
             width: 20px;
             height: 20px;
             pointer-events: none;

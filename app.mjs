@@ -748,6 +748,16 @@ elements.closeSettingsButton.addEventListener('click', () => {
     elements.settingsDialog.close();
 });
 
+elements.settingsDialog.addEventListener('click', (event) => {
+    const bounds = elements.settingsDialog.getBoundingClientRect();
+    const clickedBackdrop = event.clientX < bounds.left
+        || event.clientX > bounds.right
+        || event.clientY < bounds.top
+        || event.clientY > bounds.bottom;
+
+    if (clickedBackdrop) elements.settingsDialog.close();
+});
+
 elements.themeSetting.addEventListener('change', () => {
     preferences.theme = elements.themeSetting.value;
     applyTheme();
