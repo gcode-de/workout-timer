@@ -379,7 +379,8 @@
             color: var(--text);
             background: var(--surface);
             box-shadow: 0 28px 90px rgb(0 0 0 / 48%);
-            overflow: auto;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         dialog::backdrop {
@@ -387,7 +388,15 @@
             backdrop-filter: blur(4px);
         }
 
-        .dialog-content { padding: 26px; }
+        .dialog-content {
+            width: 100%;
+            min-width: 0;
+            padding: 26px;
+        }
+
+        .settings-section,
+        .exercise-list,
+        .exercise-card { min-width: 0; }
 
         .dialog-header {
             display: flex;
@@ -539,7 +548,7 @@
 
         .exercise-main {
             display: grid;
-            grid-template-columns: 24px 1fr 38px;
+            grid-template-columns: 24px minmax(0, 1fr) 38px;
             gap: 8px;
             align-items: center;
         }
@@ -554,13 +563,14 @@
 
         .exercise-details {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
             gap: 8px;
             align-items: end;
         }
 
         .exercise-timing {
             display: grid;
+            min-width: 0;
             gap: 6px;
             padding: 8px;
             border: 1px solid var(--border);
@@ -598,7 +608,8 @@
 
         .exercise-stepper {
             display: grid;
-            grid-template-columns: 32px 1fr 32px;
+            grid-template-columns: 32px minmax(0, 1fr) 32px;
+            min-width: 0;
             gap: 5px;
             align-items: center;
         }
@@ -627,6 +638,7 @@
 
         .exercise-time-output {
             display: grid;
+            min-width: 0;
             justify-items: center;
             line-height: 1;
         }
@@ -684,7 +696,8 @@
             .setting:last-child { grid-column: auto; }
             .configuration-save { grid-template-columns: 1fr; }
             .configuration-save button { width: 100%; }
-            .exercise-details { grid-template-columns: 1fr 1fr; }
+            .dialog-content { padding-inline: 20px; }
+            .exercise-details { grid-template-columns: minmax(0, 1fr); }
         }
 
         @media (prefers-reduced-motion: reduce) {
