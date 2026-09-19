@@ -47,7 +47,7 @@ test('primes iOS speech once with a retained silent utterance', () => {
     assert.equal(controller.activeUtterances.size, 0);
 });
 
-test('uses the device language voice and does not cancel before speaking', () => {
+test('uses the requested-language voice and does not cancel before speaking', () => {
     const germanVoice = { lang: 'de-DE', name: 'German' };
     const synthesis = createSynthesis([{ lang: 'en-US', name: 'English' }, germanVoice]);
     const controller = new SpeechController({ synthesis, Utterance: FakeUtterance, language: 'de-AT' });

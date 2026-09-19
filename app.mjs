@@ -102,7 +102,7 @@ const shortAlarm = new Audio('./alarm_short.mp3');
 const speech = new SpeechController({
     synthesis: window.speechSynthesis,
     Utterance: window.SpeechSynthesisUtterance,
-    language: navigator.language || document.documentElement.lang || 'en'
+    language: 'en-US'
 });
 const PREFERENCES_KEY = 'workoutTimerPreferences';
 const defaultPreferences = {
