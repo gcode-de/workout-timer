@@ -127,9 +127,73 @@
 
         .settings {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .setting-stage {
+            position: relative;
+            padding: 13px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: color-mix(in srgb, var(--surface) 72%, transparent);
+            box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
+            backdrop-filter: blur(18px);
+        }
+
+        .setting-stage:first-child {
+            border-color: color-mix(in srgb, #fb923c 26%, var(--border));
+            background: linear-gradient(145deg, color-mix(in srgb, #fb923c 8%, transparent), transparent 65%), var(--surface-soft);
+        }
+
+        .setting-stage:last-child {
+            border-color: color-mix(in srgb, #34d399 24%, var(--border));
+            background: linear-gradient(145deg, color-mix(in srgb, #34d399 7%, transparent), transparent 65%), var(--surface-soft);
+        }
+
+        .setting-stage-header {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 10px;
+            align-items: center;
+            padding: 0 4px 11px;
+        }
+
+        .setting-stage-number {
+            display: inline-grid;
+            place-items: center;
+            width: 26px;
+            height: 26px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            color: var(--accent-soft);
+            background: var(--secondary);
+            font-size: .68rem;
+            font-weight: 820;
+        }
+
+        .setting-stage:first-child .setting-stage-number { color: #fb923c; }
+        .setting-stage:last-child .setting-stage-number { color: #34d399; }
+
+        .setting-stage-title {
+            margin: 0;
+            font-size: .86rem;
+            font-weight: 780;
+            letter-spacing: -.01em;
+        }
+
+        .setting-stage-description {
+            margin: 2px 0 0;
+            color: var(--subtle);
+            font-size: .67rem;
+            line-height: 1.35;
+        }
+
+        .setting-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
         }
 
         .setting {
@@ -138,25 +202,25 @@
             align-items: center;
             min-height: 68px;
             padding: 7px;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            background: var(--surface-soft);
+            border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+            border-radius: 17px;
+            background: color-mix(in srgb, var(--secondary) 72%, transparent);
             box-shadow: inset 0 1px 0 rgb(255 255 255 / 5%);
-            backdrop-filter: blur(18px);
         }
 
-        .setting:last-child { grid-column: 1 / -1; }
+        .setting-wide { grid-column: 1 / -1; }
 
         .setting-copy {
             display: grid;
             gap: 3px;
+            text-align: center;
         }
 
         .setting-label {
             color: var(--subtle);
-            font-size: .62rem;
+            font-size: .59rem;
             font-weight: 750;
-            letter-spacing: .13em;
+            letter-spacing: .09em;
             text-transform: uppercase;
         }
 
@@ -730,8 +794,8 @@
 
         @media (max-width: 380px) {
             body { padding-inline: 14px; }
-            .settings { grid-template-columns: 1fr; }
-            .setting:last-child { grid-column: auto; }
+            .setting-grid { grid-template-columns: 1fr; }
+            .setting-wide { grid-column: auto; }
             .configuration-save { grid-template-columns: 1fr; }
             .configuration-save button { width: 100%; }
             .dialog-content { padding-inline: 20px; }
@@ -762,42 +826,89 @@
             </button>
         </header>
 
-        <section class="settings" aria-label="Workout settings">
-            <div class="setting">
-                <button type="button" data-setting="warmupMs" data-change="-30000" aria-label="Reduce warm-up time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Warm-up</span><strong id="warmupDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="warmupMs" data-change="30000" aria-label="Increase warm-up time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="cooldownMs" data-change="-30000" aria-label="Reduce cool-down time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Cool-down</span><strong id="cooldownDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="cooldownMs" data-change="30000" aria-label="Increase cool-down time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Work</span><strong id="workDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce rest time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Rest</span><strong id="restDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase rest time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Rounds</span><strong id="rounds" class="setting-value"></strong></span>
-                <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Sets</span><strong id="sets" class="setting-value"></strong></span>
-                <button type="button" data-setting="sets" data-change="1" aria-label="Increase sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
-            <div class="setting">
-                <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce set pause"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                <span class="setting-copy"><span class="setting-label">Set pause</span><strong id="pauseDuration" class="setting-value"></strong></span>
-                <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase set pause"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
-            </div>
+        <section class="settings" aria-label="Workout flow settings">
+            <section class="setting-stage" aria-labelledby="warmupSettingsTitle">
+                <header class="setting-stage-header">
+                    <span class="setting-stage-number" aria-hidden="true">1</span>
+                    <div>
+                        <h2 id="warmupSettingsTitle" class="setting-stage-title">Warm-up</h2>
+                        <p class="setting-stage-description">Runs once before the first work interval.</p>
+                    </div>
+                </header>
+                <div class="setting-grid">
+                    <div class="setting setting-wide">
+                        <button type="button" data-setting="warmupMs" data-change="-30000" aria-label="Reduce warm-up duration"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Duration</span><strong id="warmupDuration" class="setting-value"></strong></span>
+                        <button type="button" data-setting="warmupMs" data-change="30000" aria-label="Increase warm-up duration"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setting-stage" aria-labelledby="intervalSettingsTitle">
+                <header class="setting-stage-header">
+                    <span class="setting-stage-number" aria-hidden="true">2</span>
+                    <div>
+                        <h2 id="intervalSettingsTitle" class="setting-stage-title">Intervals</h2>
+                        <p class="setting-stage-description">Work, then recover before the next round.</p>
+                    </div>
+                </header>
+                <div class="setting-grid">
+                    <div class="setting">
+                        <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work interval"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Work interval</span><strong id="workDuration" class="setting-value"></strong></span>
+                        <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work interval"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                    <div class="setting">
+                        <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce recovery between rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Round recovery</span><strong id="restDuration" class="setting-value"></strong></span>
+                        <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase recovery between rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setting-stage" aria-labelledby="structureSettingsTitle">
+                <header class="setting-stage-header">
+                    <span class="setting-stage-number" aria-hidden="true">3</span>
+                    <div>
+                        <h2 id="structureSettingsTitle" class="setting-stage-title">Workout structure</h2>
+                        <p class="setting-stage-description">Choose how often the interval block repeats.</p>
+                    </div>
+                </header>
+                <div class="setting-grid">
+                    <div class="setting">
+                        <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds per set"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Rounds per set</span><strong id="rounds" class="setting-value"></strong></span>
+                        <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds per set"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                    <div class="setting">
+                        <button type="button" data-setting="sets" data-change="-1" aria-label="Reduce number of sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Number of sets</span><strong id="sets" class="setting-value"></strong></span>
+                        <button type="button" data-setting="sets" data-change="1" aria-label="Increase number of sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                    <div class="setting setting-wide">
+                        <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce recovery between sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Recovery between sets</span><strong id="pauseDuration" class="setting-value"></strong></span>
+                        <button type="button" data-setting="pauseMs" data-change="10000" aria-label="Increase recovery between sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="setting-stage" aria-labelledby="cooldownSettingsTitle">
+                <header class="setting-stage-header">
+                    <span class="setting-stage-number" aria-hidden="true">4</span>
+                    <div>
+                        <h2 id="cooldownSettingsTitle" class="setting-stage-title">Cool-down</h2>
+                        <p class="setting-stage-description">Runs once after the final work interval.</p>
+                    </div>
+                </header>
+                <div class="setting-grid">
+                    <div class="setting setting-wide">
+                        <button type="button" data-setting="cooldownMs" data-change="-30000" aria-label="Reduce cool-down duration"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                        <span class="setting-copy"><span class="setting-label">Duration</span><strong id="cooldownDuration" class="setting-value"></strong></span>
+                        <button type="button" data-setting="cooldownMs" data-change="30000" aria-label="Increase cool-down duration"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+                    </div>
+                </div>
+            </section>
         </section>
 
         <section id="timerCard" class="timer-card" data-phase="idle" aria-label="Timer">
@@ -816,7 +927,7 @@
             </div>
         </section>
 
-        <p class="hint">Warm-up → work → rest between rounds → set pause → cool-down. The timer continues accurately in the background.</p>
+        <p class="hint">The settings follow your workout from start to finish. The timer continues accurately in the background.</p>
     </main>
 
     <dialog id="settingsDialog" aria-labelledby="settingsTitle">
