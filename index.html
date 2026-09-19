@@ -263,9 +263,11 @@
             transition: background .35s ease;
         }
 
+        .timer-card[data-phase="warmup"] { --phase-color: #fb923c; --phase-ink: #442006; }
         .timer-card[data-phase="rest"] { --phase-color: #22d3ee; --phase-ink: #07363e; }
         .timer-card[data-phase="work"] { --phase-color: #fb7185; }
         .timer-card[data-phase="pause"] { --phase-color: #fbbf24; --phase-ink: #402d02; }
+        .timer-card[data-phase="cooldown"] { --phase-color: #34d399; --phase-ink: #063d2c; }
         .timer-card[data-phase="complete"] { --phase-color: #34d399; --phase-ink: #063d2c; }
 
         #roundCounter {
@@ -762,6 +764,16 @@
 
         <section class="settings" aria-label="Workout settings">
             <div class="setting">
+                <button type="button" data-setting="warmupMs" data-change="-30000" aria-label="Reduce warm-up time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                <span class="setting-copy"><span class="setting-label">Warm-up</span><strong id="warmupDuration" class="setting-value"></strong></span>
+                <button type="button" data-setting="warmupMs" data-change="30000" aria-label="Increase warm-up time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+            </div>
+            <div class="setting">
+                <button type="button" data-setting="cooldownMs" data-change="-30000" aria-label="Reduce cool-down time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
+                <span class="setting-copy"><span class="setting-label">Cool-down</span><strong id="cooldownDuration" class="setting-value"></strong></span>
+                <button type="button" data-setting="cooldownMs" data-change="30000" aria-label="Increase cool-down time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
+            </div>
+            <div class="setting">
                 <button type="button" data-setting="workMs" data-change="-5000" aria-label="Reduce work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                 <span class="setting-copy"><span class="setting-label">Work</span><strong id="workDuration" class="setting-value"></strong></span>
                 <button type="button" data-setting="workMs" data-change="5000" aria-label="Increase work time"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
@@ -804,7 +816,7 @@
             </div>
         </section>
 
-        <p class="hint">Rest → work for each round → set pause. The timer continues accurately when the tab is in the background.</p>
+        <p class="hint">Warm-up → work → rest between rounds → set pause → cool-down. The timer continues accurately in the background.</p>
     </main>
 
     <dialog id="settingsDialog" aria-labelledby="settingsTitle">

@@ -4,18 +4,21 @@ const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
 const defaultConfig = {
     planName: 'My workout',
+    warmupMs: 300_000,
     workMs: 20_000,
     restMs: 10_000,
     pauseMs: 120_000,
+    cooldownMs: 300_000,
     rounds: 8,
     sets: 3,
     exercises: []
 };
 
 const builtInConfigurations = [
-    { id: 'tabata', name: 'Classic Tabata', workMs: 20_000, restMs: 10_000, pauseMs: 60_000, rounds: 8, sets: 1 },
-    { id: 'cardio', name: 'Cardio Intervals', workMs: 60_000, restMs: 30_000, pauseMs: 120_000, rounds: 10, sets: 2 },
-    { id: 'strength', name: 'Strength Training', workMs: 45_000, restMs: 75_000, pauseMs: 180_000, rounds: 4, sets: 3 }
+    { id: 'tabata', name: 'Classic Tabata', warmupMs: 300_000, workMs: 20_000, restMs: 10_000, pauseMs: 60_000, cooldownMs: 300_000, rounds: 8, sets: 1 },
+    { id: 'cardio', name: 'Cardio Intervals', warmupMs: 300_000, workMs: 60_000, restMs: 30_000, pauseMs: 120_000, cooldownMs: 300_000, rounds: 10, sets: 2 },
+    { id: 'strength', name: 'Strength Training', warmupMs: 300_000, workMs: 45_000, restMs: 75_000, pauseMs: 180_000, cooldownMs: 300_000, rounds: 4, sets: 3 },
+    { id: 'norwegian-4x4', name: 'Norwegian 4×4', warmupMs: 600_000, workMs: 240_000, restMs: 180_000, pauseMs: 120_000, cooldownMs: 300_000, rounds: 4, sets: 1 }
 ];
 
 function createId() {
@@ -46,6 +49,7 @@ function normalizeExercises(exercises = []) {
 function isValidConfiguration(value) {
     return value
         && ['workMs', 'restMs', 'pauseMs'].every((key) => Number.isFinite(value[key]) && value[key] >= 1_000)
+        && ['warmupMs', 'cooldownMs'].every((key) => value[key] == null || (Number.isFinite(value[key]) && value[key] >= 1_000))
         && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1)
         && (value.exercises == null || (Array.isArray(value.exercises) && value.exercises.every(isValidExercise)));
 }
@@ -56,6 +60,8 @@ function normalizeConfiguration(value) {
     return {
         ...defaultConfig,
         ...value,
+        warmupMs: value.warmupMs ?? defaultConfig.warmupMs,
+        cooldownMs: value.cooldownMs ?? defaultConfig.cooldownMs,
         planName: typeof value.planName === 'string' && value.planName.trim()
             ? value.planName.trim()
             : defaultConfig.planName,
@@ -112,9 +118,11 @@ function loadPreferences() {
 let preferences = loadPreferences();
 
 const elements = {
+    warmupDuration: document.querySelector('#warmupDuration'),
     workDuration: document.querySelector('#workDuration'),
     restDuration: document.querySelector('#restDuration'),
     pauseDuration: document.querySelector('#pauseDuration'),
+    cooldownDuration: document.querySelector('#cooldownDuration'),
     rounds: document.querySelector('#rounds'),
     sets: document.querySelector('#sets'),
     roundCounter: document.querySelector('#roundCounter'),
@@ -301,9 +309,11 @@ function unlockAudio() {
 }
 
 function updateSettings() {
+    elements.warmupDuration.textContent = formatDuration(config.warmupMs);
     elements.workDuration.textContent = formatDuration(config.workMs);
     elements.restDuration.textContent = formatDuration(config.restMs);
     elements.pauseDuration.textContent = formatDuration(config.pauseMs);
+    elements.cooldownDuration.textContent = formatDuration(config.cooldownMs);
     elements.rounds.textContent = config.rounds;
     elements.sets.textContent = config.sets;
 }
@@ -314,6 +324,13 @@ function updatePhaseDisplay() {
     elements.status.classList.toggle('exercise-status', hasPlan && phase === PHASES.WORK && mode !== 'complete');
     elements.nextExercise.hidden = true;
     elements.exerciseNote.hidden = true;
+    const phaseLabels = {
+        [PHASES.WARMUP]: 'WARM-UP',
+        [PHASES.REST]: 'REST',
+        [PHASES.WORK]: 'WORK',
+        [PHASES.PAUSE]: 'SET PAUSE',
+        [PHASES.COOLDOWN]: 'COOL-DOWN'
+    };
 
     if (mode === 'idle') {
         elements.status.textContent = 'READY';
@@ -326,8 +343,11 @@ function updatePhaseDisplay() {
     } else if (hasPlan && phase === PHASES.WORK) {
         elements.status.textContent = exercise.name;
     } else {
-        elements.status.textContent = phase.toUpperCase();
-        if (hasPlan && phase === PHASES.REST) {
+        elements.status.textContent = phaseLabels[phase] ?? phase.toUpperCase();
+        if (hasPlan && phase === PHASES.WARMUP) {
+            elements.nextExercise.textContent = `First after warm-up: ${config.exercises[0].name}`;
+            elements.nextExercise.hidden = false;
+        } else if (hasPlan && phase === PHASES.REST) {
             elements.nextExercise.textContent = `Next: ${exercise.name}`;
             elements.nextExercise.hidden = false;
         } else if (hasPlan && phase === PHASES.PAUSE) {
@@ -336,10 +356,10 @@ function updatePhaseDisplay() {
         }
     }
 
-    const noteExercise = mode === 'idle' || phase === PHASES.PAUSE
+    const noteExercise = mode === 'idle' || phase === PHASES.WARMUP || phase === PHASES.PAUSE
         ? config.exercises[0]
         : exercise;
-    if (mode !== 'complete' && noteExercise?.notes?.trim()) {
+    if (mode !== 'complete' && phase !== PHASES.COOLDOWN && noteExercise?.notes?.trim()) {
         elements.exerciseNote.textContent = noteExercise.notes.trim();
         elements.exerciseNote.hidden = false;
     }
@@ -347,6 +367,10 @@ function updatePhaseDisplay() {
     elements.timerCard.dataset.phase = mode === 'idle' ? 'idle' : phase;
     if (phase === PHASES.COMPLETE) {
         elements.roundCounter.textContent = 'workout complete';
+    } else if (phase === PHASES.WARMUP) {
+        elements.roundCounter.textContent = 'warm-up';
+    } else if (phase === PHASES.COOLDOWN) {
+        elements.roundCounter.textContent = 'cool-down';
     } else if (phase === PHASES.PAUSE) {
         elements.roundCounter.textContent = `set ${set} of ${sets} complete`;
     } else {
@@ -692,7 +716,9 @@ function applyConfiguration(item) {
     const normalized = normalizeConfiguration({ ...defaultConfig, ...item, planName: item.name ?? item.planName });
     if (!normalized) return;
 
-    for (const key of ['planName', 'workMs', 'restMs', 'pauseMs', 'rounds', 'sets']) config[key] = normalized[key];
+    for (const key of ['planName', 'warmupMs', 'workMs', 'restMs', 'pauseMs', 'cooldownMs', 'rounds', 'sets']) {
+        config[key] = normalized[key];
+    }
     config.exercises = normalized.exercises.map((exercise) => ({ ...exercise }));
     sequence.updateConfig(config);
     sequence.reset();
@@ -934,9 +960,11 @@ elements.exportPlanButton.addEventListener('click', () => {
         name: config.planName,
         configuration: {
             planName: config.planName,
+            warmupMs: config.warmupMs,
             workMs: config.workMs,
             restMs: config.restMs,
             pauseMs: config.pauseMs,
+            cooldownMs: config.cooldownMs,
             rounds: config.rounds,
             sets: config.sets,
             exercises: config.exercises.map(({ name, workMs, restMs, notes }) => ({ name, workMs, restMs, notes }))

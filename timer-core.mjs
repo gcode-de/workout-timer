@@ -1,7 +1,9 @@
 export const PHASES = Object.freeze({
+    WARMUP: 'warmup',
     REST: 'rest',
     WORK: 'work',
     PAUSE: 'pause',
+    COOLDOWN: 'cooldown',
     COMPLETE: 'complete'
 });
 
@@ -49,6 +51,9 @@ export function formatDuration(milliseconds) {
 }
 
 export function phaseAnnouncement({ phase, exerciseName = '', nextExerciseName = '' }) {
+    if (phase === PHASES.WARMUP) {
+        return nextExerciseName ? `Warm-up. First exercise: ${nextExerciseName}` : 'Warm-up';
+    }
     if (phase === PHASES.WORK) return exerciseName || 'Work';
     if (phase === PHASES.REST) return nextExerciseName ? `Rest. Next: ${nextExerciseName}` : 'Rest';
     if (phase === PHASES.PAUSE) {
@@ -56,28 +61,33 @@ export function phaseAnnouncement({ phase, exerciseName = '', nextExerciseName =
             ? `Set complete. Next set starts with ${nextExerciseName}`
             : 'Set complete';
     }
+    if (phase === PHASES.COOLDOWN) return 'Cool-down';
     if (phase === PHASES.COMPLETE) return 'Workout complete';
     return '';
 }
 
 export class WorkoutSequence {
-    constructor({ workMs, restMs, pauseMs, rounds, sets, exercises = [] }) {
-        this.updateConfig({ workMs, restMs, pauseMs, rounds, sets, exercises });
+    constructor({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [] }) {
+        this.updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises });
         this.reset();
     }
 
-    updateConfig({ workMs, restMs, pauseMs, rounds, sets, exercises = [] }) {
+    updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [] }) {
+        assertDuration(warmupMs, 'warmupMs');
         assertDuration(workMs, 'workMs');
         assertDuration(restMs, 'restMs');
         assertDuration(pauseMs, 'pauseMs');
+        assertDuration(cooldownMs, 'cooldownMs');
         assertCount(rounds, 'rounds');
         assertCount(sets, 'sets');
 
         const normalizedExercises = normalizeExercises(exercises);
         this.config = {
+            warmupMs,
             workMs,
             restMs,
             pauseMs,
+            cooldownMs,
             rounds: normalizedExercises.length || rounds,
             sets,
             exercises: normalizedExercises
@@ -85,7 +95,7 @@ export class WorkoutSequence {
     }
 
     reset() {
-        this.phase = PHASES.REST;
+        this.phase = PHASES.WARMUP;
         this.round = 1;
         this.set = 1;
     }
@@ -93,9 +103,11 @@ export class WorkoutSequence {
     get duration() {
         const exercise = this.config.exercises[this.round - 1];
         const durationByPhase = {
+            [PHASES.WARMUP]: this.config.warmupMs,
             [PHASES.REST]: exercise?.restMs ?? this.config.restMs,
             [PHASES.WORK]: exercise?.workMs ?? this.config.workMs,
             [PHASES.PAUSE]: this.config.pauseMs,
+            [PHASES.COOLDOWN]: this.config.cooldownMs,
             [PHASES.COMPLETE]: 0
         };
 
@@ -103,7 +115,7 @@ export class WorkoutSequence {
     }
 
     next() {
-        if (this.phase === PHASES.REST) {
+        if (this.phase === PHASES.WARMUP || this.phase === PHASES.REST) {
             this.phase = PHASES.WORK;
         } else if (this.phase === PHASES.WORK && this.round < this.config.rounds) {
             this.round += 1;
@@ -111,11 +123,13 @@ export class WorkoutSequence {
         } else if (this.phase === PHASES.WORK && this.set < this.config.sets) {
             this.phase = PHASES.PAUSE;
         } else if (this.phase === PHASES.WORK) {
-            this.phase = PHASES.COMPLETE;
+            this.phase = PHASES.COOLDOWN;
         } else if (this.phase === PHASES.PAUSE) {
             this.set += 1;
             this.round = 1;
-            this.phase = PHASES.REST;
+            this.phase = PHASES.WORK;
+        } else if (this.phase === PHASES.COOLDOWN) {
+            this.phase = PHASES.COMPLETE;
         } else {
             this.reset();
         }
