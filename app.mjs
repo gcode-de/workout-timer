@@ -1,4 +1,5 @@
 import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
+import { SpeechController } from './speech-controller.mjs';
 
 const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
@@ -98,6 +99,11 @@ let customConfigurations = loadCustomConfigurations();
 const sequence = new WorkoutSequence(config);
 const alarm = new Audio('./alarm.mp3');
 const shortAlarm = new Audio('./alarm_short.mp3');
+const speech = new SpeechController({
+    synthesis: window.speechSynthesis,
+    Utterance: window.SpeechSynthesisUtterance,
+    language: navigator.language || document.documentElement.lang || 'en'
+});
 const PREFERENCES_KEY = 'workoutTimerPreferences';
 const defaultPreferences = {
     theme: 'system',
@@ -173,6 +179,7 @@ let lastCountdownSecond = null;
 let audioUnlocked = false;
 let wakeLock = null;
 let lastAnnouncementKey = null;
+let pendingAnnouncementId = null;
 
 function savePreferences() {
     try {
@@ -225,7 +232,7 @@ function updateCapabilityLabels() {
         elements.wakeLockSupport.textContent = 'Prevent the display from sleeping during a workout.';
     }
 
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+    if (!speech.supported) {
         elements.voiceSetting.disabled = true;
         elements.voiceSupport.textContent = 'Voice announcements are not supported by this browser.';
     }
@@ -261,18 +268,20 @@ function safelyPlay(audio) {
     result?.catch(() => {});
 }
 
-function speak(text) {
-    if (!preferences.voiceAnnouncements || !text) return;
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
-
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = document.documentElement.lang || navigator.language || 'en';
-    utterance.rate = 1;
-    window.speechSynthesis.speak(utterance);
+function cancelSpeech() {
+    clearTimeout(pendingAnnouncementId);
+    pendingAnnouncementId = null;
+    speech.cancel();
 }
 
-function announceCurrentPhase() {
+function speak(text) {
+    if (!preferences.voiceAnnouncements || !text) return false;
+    return speech.speak(text);
+}
+
+function announceCurrentPhase(delayMs = 0) {
+    if (!preferences.voiceAnnouncements) return;
+
     const snapshot = sequence.snapshot();
     const key = `${snapshot.phase}:${snapshot.set}:${snapshot.round}`;
     if (key === lastAnnouncementKey) return;
@@ -281,12 +290,19 @@ function announceCurrentPhase() {
     const nextExerciseName = snapshot.phase === PHASES.PAUSE
         ? config.exercises[0]?.name ?? ''
         : exerciseName;
-    speak(phaseAnnouncement({
+    const announcement = phaseAnnouncement({
         phase: snapshot.phase,
         exerciseName,
         nextExerciseName
-    }));
-    lastAnnouncementKey = key;
+    });
+    const deliver = () => {
+        pendingAnnouncementId = null;
+        if (speak(announcement)) lastAnnouncementKey = key;
+    };
+
+    clearTimeout(pendingAnnouncementId);
+    if (delayMs > 0) pendingAnnouncementId = window.setTimeout(deliver, delayMs);
+    else deliver();
 }
 
 function unlockAudio() {
@@ -423,13 +439,13 @@ function announceCountdown() {
     }
 }
 
-function finishWorkout() {
+function finishWorkout(announcementDelayMs = 0) {
     mode = 'complete';
     remainingMs = 0;
     clearInterval(intervalId);
     intervalId = null;
     releaseWakeLock();
-    announceCurrentPhase();
+    announceCurrentPhase(announcementDelayMs);
 }
 
 function syncExpiredPhases(now) {
@@ -440,14 +456,14 @@ function syncExpiredPhases(now) {
     do {
         sequence.next();
         if (sequence.phase === PHASES.COMPLETE) {
-            finishWorkout();
+            finishWorkout(600);
             return true;
         }
         phaseEndsAt += sequence.duration;
     } while (now >= phaseEndsAt);
 
     lastCountdownSecond = null;
-    announceCurrentPhase();
+    announceCurrentPhase(600);
     return false;
 }
 
@@ -470,6 +486,8 @@ function startTimer() {
         remainingMs = sequence.duration;
     }
 
+    const needsAudioUnlock = !audioUnlocked;
+    if (preferences.voiceAnnouncements) speech.prime();
     unlockAudio();
     mode = 'running';
     phaseEndsAt = Date.now() + remainingMs;
@@ -478,7 +496,7 @@ function startTimer() {
     intervalId = window.setInterval(tick, 200);
     acquireWakeLock();
     render();
-    announceCurrentPhase();
+    announceCurrentPhase(needsAudioUnlock ? 100 : 0);
 }
 
 function pauseTimer() {
@@ -503,7 +521,7 @@ function stopTimer() {
     remainingMs = sequence.duration;
     lastCountdownSecond = null;
     lastAnnouncementKey = null;
-    window.speechSynthesis?.cancel();
+    cancelSpeech();
     releaseWakeLock();
     elements.progress.value = 0;
     render();
@@ -532,7 +550,7 @@ function resetAfterPlanChange(message = '', { renderList = true } = {}) {
     mode = 'idle';
     remainingMs = sequence.duration;
     lastAnnouncementKey = null;
-    window.speechSynthesis?.cancel();
+    cancelSpeech();
     saveActiveConfig();
     updateSettings();
     if (renderList) renderExerciseList();
@@ -725,7 +743,7 @@ function applyConfiguration(item) {
     mode = 'idle';
     remainingMs = sequence.duration;
     lastAnnouncementKey = null;
-    window.speechSynthesis?.cancel();
+    cancelSpeech();
     saveActiveConfig();
     updateSettings();
     renderExerciseList();
@@ -871,13 +889,13 @@ elements.wakeLockSetting.addEventListener('change', () => {
 elements.voiceSetting.addEventListener('change', () => {
     preferences.voiceAnnouncements = elements.voiceSetting.checked;
     savePreferences();
-    window.speechSynthesis?.cancel();
     lastAnnouncementKey = null;
 
     if (preferences.voiceAnnouncements) {
+        speech.prime();
         if (mode === 'running' || mode === 'paused') announceCurrentPhase();
         else speak('Voice announcements enabled');
-    }
+    } else cancelSpeech();
 });
 
 elements.configurationSelect.addEventListener('change', () => {
