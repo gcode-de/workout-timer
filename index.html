@@ -216,6 +216,26 @@
             text-align: center;
         }
 
+        .order-setting {
+            grid-template-columns: minmax(0, 1fr) minmax(150px, auto);
+            gap: 12px;
+            padding-inline: 14px;
+        }
+
+        .order-setting .setting-copy { text-align: left; }
+
+        .order-setting select {
+            width: 100%;
+            height: 42px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            background: var(--secondary);
+            font: inherit;
+            font-size: .78rem;
+        }
+
         .setting-label {
             color: var(--subtle);
             font-size: .59rem;
@@ -940,6 +960,7 @@
             .exercise-details { grid-template-columns: minmax(0, 1fr); }
             .set-log-form { grid-template-columns: 1fr 1fr; }
             .set-log-field-wide { grid-column: 1 / -1; }
+            .order-setting { grid-template-columns: 1fr; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -1000,7 +1021,7 @@
                     </div>
                     <div class="setting">
                         <button type="button" data-setting="restMs" data-change="-5000" aria-label="Reduce recovery between rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                        <span class="setting-copy"><span class="setting-label">Round recovery</span><strong id="restDuration" class="setting-value"></strong></span>
+                        <span class="setting-copy"><span class="setting-label">Exercise change</span><strong id="restDuration" class="setting-value"></strong></span>
                         <button type="button" data-setting="restMs" data-change="5000" aria-label="Increase recovery between rounds"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
                     </div>
                 </div>
@@ -1011,13 +1032,13 @@
                     <span class="setting-stage-number" aria-hidden="true">3</span>
                     <div>
                         <h2 id="structureSettingsTitle" class="setting-stage-title">Workout structure</h2>
-                        <p class="setting-stage-description">Choose how often the interval block repeats.</p>
+                        <p class="setting-stage-description">Choose exercise order, sets, and recovery.</p>
                     </div>
                 </header>
                 <div class="setting-grid">
                     <div class="setting">
                         <button type="button" data-setting="rounds" data-change="-1" aria-label="Reduce rounds per set"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
-                        <span class="setting-copy"><span class="setting-label">Rounds per set</span><strong id="rounds" class="setting-value"></strong></span>
+                        <span class="setting-copy"><span class="setting-label">Exercises / rounds</span><strong id="rounds" class="setting-value"></strong></span>
                         <button type="button" data-setting="rounds" data-change="1" aria-label="Increase rounds per set"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
                     </div>
                     <div class="setting">
@@ -1025,6 +1046,16 @@
                         <span class="setting-copy"><span class="setting-label">Number of sets</span><strong id="sets" class="setting-value"></strong></span>
                         <button type="button" data-setting="sets" data-change="1" aria-label="Increase number of sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12M10 4v12"/></svg></button>
                     </div>
+                    <label class="setting setting-wide order-setting">
+                        <span class="setting-copy">
+                            <span class="setting-label">Exercise order</span>
+                            <strong class="setting-value">Training style</strong>
+                        </span>
+                        <select id="exerciseOrder" aria-label="Exercise order">
+                            <option value="straight">Exercise by exercise</option>
+                            <option value="circuit">Circuit</option>
+                        </select>
+                    </label>
                     <div class="setting setting-wide">
                         <button type="button" data-setting="pauseMs" data-change="-10000" aria-label="Reduce recovery between sets"><svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10h12"/></svg></button>
                         <span class="setting-copy"><span class="setting-label">Recovery between sets</span><strong id="pauseDuration" class="setting-value"></strong></span>

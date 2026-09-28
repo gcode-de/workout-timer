@@ -96,6 +96,7 @@ const kraftJoExercises = [
 ];
 const defaultConfig = {
     planName: 'Kraft Jo',
+    exerciseOrder: 'straight',
     warmupMs: 300_000,
     workMs: 60_000,
     restMs: 30_000,
@@ -203,6 +204,7 @@ function isValidConfiguration(value) {
         && ['workMs', 'restMs', 'pauseMs'].every((key) => Number.isFinite(value[key]) && value[key] >= 1_000)
         && (value.warmupMs == null || (Number.isFinite(value.warmupMs) && value.warmupMs >= 0))
         && (value.cooldownMs == null || (Number.isFinite(value.cooldownMs) && value.cooldownMs >= 0))
+        && (value.exerciseOrder == null || ['circuit', 'straight'].includes(value.exerciseOrder))
         && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1)
         && (value.exercises == null || (Array.isArray(value.exercises) && value.exercises.every(isValidExercise)));
 }
@@ -215,6 +217,9 @@ function normalizeConfiguration(value) {
         ...value,
         warmupMs: value.warmupMs ?? defaultConfig.warmupMs,
         cooldownMs: value.cooldownMs ?? defaultConfig.cooldownMs,
+        exerciseOrder: ['circuit', 'straight'].includes(value.exerciseOrder)
+            ? value.exerciseOrder
+            : value.planName === 'Kraft Jo' ? 'straight' : 'circuit',
         planName: typeof value.planName === 'string' && value.planName.trim()
             ? value.planName.trim()
             : defaultConfig.planName,
@@ -302,6 +307,7 @@ const elements = {
     restDuration: document.querySelector('#restDuration'),
     pauseDuration: document.querySelector('#pauseDuration'),
     cooldownDuration: document.querySelector('#cooldownDuration'),
+    exerciseOrder: document.querySelector('#exerciseOrder'),
     rounds: document.querySelector('#rounds'),
     sets: document.querySelector('#sets'),
     roundCounter: document.querySelector('#roundCounter'),
@@ -619,7 +625,7 @@ function announceCurrentPhase(delayMs = 0) {
 
     const exerciseName = currentExerciseName(snapshot.exercise);
     const nextExerciseName = snapshot.phase === PHASES.PAUSE
-        ? currentExerciseName(config.exercises[0])
+        ? currentExerciseName(config.exerciseOrder === 'straight' ? snapshot.exercise : config.exercises[0])
         : exerciseName;
     const announcement = phaseAnnouncement({
         phase: snapshot.phase,
@@ -661,6 +667,7 @@ function updateSettings() {
     elements.restDuration.textContent = formatDuration(config.restMs);
     elements.pauseDuration.textContent = formatDuration(config.pauseMs);
     elements.cooldownDuration.textContent = formatDuration(config.cooldownMs);
+    elements.exerciseOrder.value = config.exerciseOrder;
     elements.rounds.textContent = config.rounds;
     elements.sets.textContent = config.sets;
 }
@@ -698,14 +705,17 @@ function updatePhaseDisplay() {
             elements.nextExercise.textContent = `Next: ${currentExerciseName(exercise)}`;
             elements.nextExercise.hidden = false;
         } else if (hasPlan && phase === PHASES.PAUSE) {
-            elements.nextExercise.textContent = `Next set: ${currentExerciseName(config.exercises[0])}`;
+            const nextSetExercise = config.exerciseOrder === 'straight' ? exercise : config.exercises[0];
+            elements.nextExercise.textContent = `Next set: ${currentExerciseName(nextSetExercise)}`;
             elements.nextExercise.hidden = false;
         }
     }
 
-    const noteExercise = mode === 'idle' || phase === PHASES.WARMUP || phase === PHASES.PAUSE
+    const noteExercise = mode === 'idle' || phase === PHASES.WARMUP
         ? config.exercises[0]
-        : exercise;
+        : phase === PHASES.PAUSE && config.exerciseOrder === 'circuit'
+            ? config.exercises[0]
+            : exercise;
     const notes = noteExercise ? currentExerciseNotes(noteExercise) : '';
     if (mode !== 'complete' && phase !== PHASES.COOLDOWN && notes) {
         elements.exerciseNote.textContent = notes;
@@ -720,9 +730,13 @@ function updatePhaseDisplay() {
     } else if (phase === PHASES.COOLDOWN) {
         elements.roundCounter.textContent = 'cool-down';
     } else if (phase === PHASES.PAUSE) {
-        elements.roundCounter.textContent = `set ${set} of ${sets} complete`;
+        elements.roundCounter.textContent = config.exerciseOrder === 'straight'
+            ? `${currentExerciseName(exercise)} · set ${set} of ${sets} complete`
+            : `set ${set} of ${sets} complete`;
     } else {
-        elements.roundCounter.textContent = `set ${set} of ${sets} · round ${round} of ${rounds}`;
+        elements.roundCounter.textContent = config.exerciseOrder === 'straight' && hasPlan
+            ? `exercise ${round} of ${rounds} · set ${set} of ${sets}`
+            : `set ${set} of ${sets} · round ${round} of ${rounds}`;
     }
 }
 
@@ -750,6 +764,7 @@ function updateControls() {
     elements.configurationControls.forEach((control) => {
         control.disabled = workoutActive;
     });
+    elements.exerciseOrder.disabled = workoutActive || config.exercises.length === 0;
     document.querySelectorAll('[data-plan-control]').forEach((control) => {
         control.disabled = workoutActive;
     });
@@ -1091,7 +1106,7 @@ function applyConfiguration(item) {
     });
     if (!normalized) return;
 
-    for (const key of ['planName', 'warmupMs', 'workMs', 'restMs', 'pauseMs', 'cooldownMs', 'rounds', 'sets']) {
+    for (const key of ['planName', 'exerciseOrder', 'warmupMs', 'workMs', 'restMs', 'pauseMs', 'cooldownMs', 'rounds', 'sets']) {
         config[key] = normalized[key];
     }
     config.exercises = normalized.exercises.map((exercise) => ({ ...exercise }));
@@ -1201,6 +1216,14 @@ elements.settingButtons.forEach((button) => {
     bindRepeatingAction(button, () => {
         changeSetting(button.dataset.setting, Number(button.dataset.change));
     });
+});
+
+elements.exerciseOrder.addEventListener('change', () => {
+    if (mode !== 'idle' || !config.exercises.length) return;
+    config.exerciseOrder = elements.exerciseOrder.value;
+    resetAfterPlanChange(config.exerciseOrder === 'straight'
+        ? 'Exercise-by-exercise order enabled.'
+        : 'Circuit order enabled.');
 });
 
 elements.setLogForm.addEventListener('submit', (event) => {
@@ -1383,6 +1406,7 @@ elements.exportPlanButton.addEventListener('click', () => {
         name: config.planName,
         configuration: {
             planName: config.planName,
+            exerciseOrder: config.exerciseOrder,
             warmupMs: config.warmupMs,
             workMs: config.workMs,
             restMs: config.restMs,

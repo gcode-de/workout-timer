@@ -104,6 +104,33 @@ test('starts a fresh set after the pause', () => {
     });
 });
 
+test('can complete all sets of one exercise before moving to the next', () => {
+    const sequence = new WorkoutSequence({
+        ...defaults,
+        warmupMs: 0,
+        rounds: 2,
+        sets: 2,
+        exerciseOrder: 'straight'
+    });
+    const states = [sequence.snapshot()];
+
+    for (let index = 0; index < 7; index += 1) states.push(sequence.next());
+
+    assert.deepEqual(
+        states.map(({ phase, round, set }) => [phase, round, set]),
+        [
+            [PHASES.WORK, 1, 1],
+            [PHASES.PAUSE, 1, 1],
+            [PHASES.WORK, 1, 2],
+            [PHASES.REST, 2, 1],
+            [PHASES.WORK, 2, 1],
+            [PHASES.PAUSE, 2, 1],
+            [PHASES.WORK, 2, 2],
+            [PHASES.COOLDOWN, 2, 2]
+        ]
+    );
+});
+
 test('runs cool-down once after the final work interval', () => {
     const sequence = new WorkoutSequence({ ...defaults, rounds: 1, sets: 1 });
 

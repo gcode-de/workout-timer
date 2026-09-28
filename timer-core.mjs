@@ -73,12 +73,12 @@ export function phaseAnnouncement({ phase, exerciseName = '', nextExerciseName =
 }
 
 export class WorkoutSequence {
-    constructor({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [] }) {
-        this.updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises });
+    constructor({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [], exerciseOrder = 'circuit' }) {
+        this.updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises, exerciseOrder });
         this.reset();
     }
 
-    updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [] }) {
+    updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [], exerciseOrder = 'circuit' }) {
         assertOptionalPhaseDuration(warmupMs, 'warmupMs');
         assertDuration(workMs, 'workMs');
         assertDuration(restMs, 'restMs');
@@ -86,6 +86,9 @@ export class WorkoutSequence {
         assertOptionalPhaseDuration(cooldownMs, 'cooldownMs');
         assertCount(rounds, 'rounds');
         assertCount(sets, 'sets');
+        if (!['circuit', 'straight'].includes(exerciseOrder)) {
+            throw new RangeError('exerciseOrder must be circuit or straight');
+        }
 
         const normalizedExercises = normalizeExercises(exercises);
         this.config = {
@@ -96,7 +99,8 @@ export class WorkoutSequence {
             cooldownMs,
             rounds: normalizedExercises.length || rounds,
             sets,
-            exercises: normalizedExercises
+            exercises: normalizedExercises,
+            exerciseOrder
         };
     }
 
@@ -123,6 +127,12 @@ export class WorkoutSequence {
     next() {
         if (this.phase === PHASES.WARMUP || this.phase === PHASES.REST) {
             this.phase = PHASES.WORK;
+        } else if (this.phase === PHASES.WORK && this.config.exerciseOrder === 'straight' && this.set < this.config.sets) {
+            this.phase = PHASES.PAUSE;
+        } else if (this.phase === PHASES.WORK && this.config.exerciseOrder === 'straight' && this.round < this.config.rounds) {
+            this.round += 1;
+            this.set = 1;
+            this.phase = PHASES.REST;
         } else if (this.phase === PHASES.WORK && this.round < this.config.rounds) {
             this.round += 1;
             this.phase = PHASES.REST;
@@ -132,7 +142,7 @@ export class WorkoutSequence {
             this.phase = this.config.cooldownMs === 0 ? PHASES.COMPLETE : PHASES.COOLDOWN;
         } else if (this.phase === PHASES.PAUSE) {
             this.set += 1;
-            this.round = 1;
+            if (this.config.exerciseOrder === 'circuit') this.round = 1;
             this.phase = PHASES.WORK;
         } else if (this.phase === PHASES.COOLDOWN) {
             this.phase = PHASES.COMPLETE;
