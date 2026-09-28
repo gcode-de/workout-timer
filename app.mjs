@@ -1,21 +1,113 @@
 import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
 import { SpeechController } from './speech-controller.mjs';
+import {
+    chooseAlternatingExercise,
+    formatLoad,
+    recommendProgression,
+    sessionsForExercise,
+    summarizeProgress
+} from './progression-core.mjs';
 
 const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
+const PROGRESS_HISTORY_KEY = 'workoutTimerProgressHistory';
+const kraftJoExercises = [
+    {
+        trackingId: 'kraft-jo-lat-pulldown',
+        name: 'Latzug',
+        workMs: null,
+        restMs: null,
+        notes: 'Einstellung 45.',
+        progression: {
+            type: 'load', minReps: 8, maxReps: 12, initialReps: 10,
+            initialLoad: 30, increment: 5, unit: 'kg am Kabelzug'
+        }
+    },
+    {
+        trackingId: 'kraft-jo-step-ups',
+        name: 'Step-ups',
+        workMs: null,
+        restMs: null,
+        notes: 'Wiederholungen je Seite; die schwächere Seite bestimmt die Steigerung.',
+        progression: {
+            type: 'load', minReps: 8, maxReps: 15, initialReps: 10,
+            initialLoad: 0, increment: 1, unit: 'kg je Hantel', zeroLabel: 'Körpergewicht', perSide: true
+        }
+    },
+    {
+        trackingId: 'kraft-jo-push-ups',
+        name: 'Liegestütze',
+        workMs: null,
+        restMs: null,
+        notes: 'Brust, Trizeps und Rumpf stabil trainieren.',
+        progression: {
+            type: 'variant', minReps: 8, maxReps: 15, initialReps: 10,
+            initialVariant: 'Normal',
+            variants: ['Hände erhöht', 'Normal', 'Füße erhöht', 'Langsam absenken', 'Mit Zusatzgewicht']
+        }
+    },
+    {
+        trackingId: 'kraft-jo-rdl',
+        name: 'Rumänisches Kreuzheben',
+        workMs: null,
+        restMs: null,
+        notes: 'Gesamtgewicht erfassen.',
+        progression: {
+            type: 'load', minReps: 8, maxReps: 15, initialReps: 12,
+            initialLoad: 10, increment: 2, unit: 'kg gesamt'
+        }
+    },
+    {
+        trackingId: 'kraft-jo-row-press-slot',
+        name: 'Kabelrudern / Schulterdrücken',
+        workMs: null,
+        restMs: null,
+        notes: 'Die App wählt automatisch die Übung, die länger nicht trainiert wurde.',
+        alternatives: [
+            {
+                trackingId: 'kraft-jo-cable-row',
+                name: 'Kabelrudern',
+                progression: {
+                    type: 'load', minReps: 8, maxReps: 12, initialReps: 10,
+                    initialLoad: null, increment: 5, unit: 'kg am Kabelzug'
+                }
+            },
+            {
+                trackingId: 'kraft-jo-shoulder-press',
+                name: 'Schulterdrücken',
+                progression: {
+                    type: 'load', minReps: 8, maxReps: 12, initialReps: 10,
+                    initialLoad: 5, increment: 1, unit: 'kg je Hantel', perSide: true
+                }
+            }
+        ]
+    },
+    {
+        trackingId: 'kraft-jo-single-leg-hip-thrust',
+        name: 'Einbeinige Hip Thrusts',
+        workMs: null,
+        restMs: null,
+        notes: 'Wiederholungen je Seite; die schwächere Seite bestimmt die Steigerung.',
+        progression: {
+            type: 'load', minReps: 10, maxReps: 20, initialReps: 10,
+            initialLoad: 0, increment: 2, unit: 'kg Zusatzgewicht', zeroLabel: 'Körpergewicht', perSide: true
+        }
+    }
+];
 const defaultConfig = {
-    planName: 'My workout',
+    planName: 'Kraft Jo',
     warmupMs: 300_000,
-    workMs: 20_000,
-    restMs: 10_000,
+    workMs: 60_000,
+    restMs: 30_000,
     pauseMs: 120_000,
     cooldownMs: 300_000,
-    rounds: 8,
-    sets: 3,
-    exercises: []
+    rounds: kraftJoExercises.length,
+    sets: 2,
+    exercises: kraftJoExercises
 };
 
 const builtInConfigurations = [
+    { id: 'kraft-jo', name: 'Kraft Jo', ...defaultConfig },
     { id: 'tabata', name: 'Classic Tabata', warmupMs: 300_000, workMs: 20_000, restMs: 10_000, pauseMs: 60_000, cooldownMs: 300_000, rounds: 8, sets: 1 },
     { id: 'cardio', name: 'Cardio Intervals', warmupMs: 300_000, workMs: 60_000, restMs: 30_000, pauseMs: 120_000, cooldownMs: 300_000, rounds: 10, sets: 2 },
     { id: 'strength', name: 'Strength Training', warmupMs: 300_000, workMs: 45_000, restMs: 75_000, pauseMs: 180_000, cooldownMs: 300_000, rounds: 4, sets: 3 },
@@ -24,6 +116,58 @@ const builtInConfigurations = [
 
 function createId() {
     return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function trackingIdFor(name) {
+    const slug = String(name)
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLocaleLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    return `exercise-${slug || createId()}`;
+}
+
+function normalizeProgression(value = {}) {
+    const type = value.type === 'variant' ? 'variant' : 'load';
+    const minReps = Number.isInteger(value.minReps) && value.minReps > 0 ? value.minReps : 8;
+    const maxReps = Number.isInteger(value.maxReps) && value.maxReps >= minReps ? value.maxReps : 12;
+    const progression = {
+        type,
+        minReps,
+        maxReps,
+        initialReps: Number.isInteger(value.initialReps)
+            ? Math.min(maxReps, Math.max(minReps, value.initialReps))
+            : minReps,
+        perSide: Boolean(value.perSide)
+    };
+
+    if (type === 'variant') {
+        progression.variants = Array.isArray(value.variants) && value.variants.length
+            ? value.variants.map(String)
+            : ['Aktuelle Variante'];
+        progression.initialVariant = progression.variants.includes(value.initialVariant)
+            ? value.initialVariant
+            : progression.variants[0];
+    } else {
+        progression.initialLoad = Number.isFinite(value.initialLoad) ? value.initialLoad : null;
+        progression.increment = Number.isFinite(value.increment) && value.increment > 0 ? value.increment : 1;
+        progression.unit = typeof value.unit === 'string' && value.unit.trim() ? value.unit.trim() : 'kg';
+        if (typeof value.zeroLabel === 'string' && value.zeroLabel.trim()) progression.zeroLabel = value.zeroLabel.trim();
+    }
+
+    return progression;
+}
+
+function normalizeAlternative(alternative) {
+    const name = String(alternative?.name ?? 'Alternative').trim();
+    return {
+        trackingId: typeof alternative?.trackingId === 'string' && alternative.trackingId
+            ? alternative.trackingId
+            : trackingIdFor(name),
+        name,
+        progression: normalizeProgression(alternative?.progression)
+    };
 }
 
 function isValidExercise(exercise) {
@@ -40,10 +184,17 @@ function normalizeExercises(exercises = []) {
     if (!Array.isArray(exercises)) return [];
     return exercises.map((exercise) => ({
         id: typeof exercise.id === 'string' && exercise.id ? exercise.id : createId(),
+        trackingId: typeof exercise.trackingId === 'string' && exercise.trackingId
+            ? exercise.trackingId
+            : trackingIdFor(exercise.name),
         name: exercise.name.trim(),
         workMs: exercise.workMs ?? null,
         restMs: exercise.restMs ?? null,
-        notes: typeof exercise.notes === 'string' ? exercise.notes.slice(0, 500) : ''
+        notes: typeof exercise.notes === 'string' ? exercise.notes.slice(0, 500) : '',
+        progression: normalizeProgression(exercise.progression),
+        alternatives: Array.isArray(exercise.alternatives)
+            ? exercise.alternatives.map(normalizeAlternative)
+            : []
     }));
 }
 
@@ -74,9 +225,12 @@ function normalizeConfiguration(value) {
 function loadActiveConfig() {
     try {
         const saved = JSON.parse(localStorage.getItem(ACTIVE_CONFIG_KEY));
-        return normalizeConfiguration(saved) ?? { ...defaultConfig, exercises: [] };
+        const legacyKraftJo = saved?.planName === 'Kraft Jo'
+            && !saved.exercises?.some((exercise) => exercise.trackingId === 'kraft-jo-lat-pulldown');
+        if (legacyKraftJo) return normalizeConfiguration(defaultConfig);
+        return normalizeConfiguration(saved) ?? normalizeConfiguration(defaultConfig);
     } catch {
-        return { ...defaultConfig, exercises: [] };
+        return normalizeConfiguration(defaultConfig);
     }
 }
 
@@ -93,8 +247,26 @@ function loadCustomConfigurations() {
     }
 }
 
+function loadProgressHistory() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(PROGRESS_HISTORY_KEY));
+        return Array.isArray(saved)
+            ? saved.filter((entry) => entry
+                && typeof entry.sessionId === 'string'
+                && typeof entry.trackingId === 'string'
+                && Number.isInteger(entry.set)
+                && Number.isInteger(entry.reps)
+                && Number.isInteger(entry.rir)
+                && typeof entry.completedAt === 'string')
+            : [];
+    } catch {
+        return [];
+    }
+}
+
 const config = loadActiveConfig();
 let customConfigurations = loadCustomConfigurations();
+let progressHistory = loadProgressHistory();
 
 const sequence = new WorkoutSequence(config);
 const alarm = new Audio('./alarm.mp3');
@@ -138,6 +310,21 @@ const elements = {
     timer: document.querySelector('#timer'),
     timerCard: document.querySelector('#timerCard'),
     progress: document.querySelector('#progress'),
+    progressionPanel: document.querySelector('#progressionPanel'),
+    progressionExercise: document.querySelector('#progressionExercise'),
+    progressionRecommendation: document.querySelector('#progressionRecommendation'),
+    progressionLast: document.querySelector('#progressionLast'),
+    setLogForm: document.querySelector('#setLogForm'),
+    loadField: document.querySelector('#loadField'),
+    loadInput: document.querySelector('#loadInput'),
+    loadUnit: document.querySelector('#loadUnit'),
+    variantField: document.querySelector('#variantField'),
+    variantInput: document.querySelector('#variantInput'),
+    repsInput: document.querySelector('#repsInput'),
+    repsLabel: document.querySelector('#repsLabel'),
+    rirInput: document.querySelector('#rirInput'),
+    setLogButton: document.querySelector('#setLogButton'),
+    setLogMessage: document.querySelector('#setLogMessage'),
     primaryButton: document.querySelector('#primaryButton'),
     primaryIcon: document.querySelector('#primaryIcon'),
     primaryLabel: document.querySelector('#primaryLabel'),
@@ -168,7 +355,8 @@ const elements = {
     importPlanButton: document.querySelector('#importPlanButton'),
     importPlanInput: document.querySelector('#importPlanInput'),
     exportPlanButton: document.querySelector('#exportPlanButton'),
-    planMessage: document.querySelector('#planMessage')
+    planMessage: document.querySelector('#planMessage'),
+    progressList: document.querySelector('#progressList')
 };
 
 let mode = 'idle';
@@ -180,6 +368,9 @@ let audioUnlocked = false;
 let wakeLock = null;
 let lastAnnouncementKey = null;
 let pendingAnnouncementId = null;
+let activeSessionId = null;
+let activeLogContext = null;
+let sessionExerciseSelections = new Map();
 
 function savePreferences() {
     try {
@@ -197,6 +388,145 @@ function saveCustomConfigurations() {
     try {
         localStorage.setItem(CONFIGURATIONS_KEY, JSON.stringify(customConfigurations));
     } catch {}
+}
+
+function saveProgressHistory() {
+    try {
+        localStorage.setItem(PROGRESS_HISTORY_KEY, JSON.stringify(progressHistory));
+    } catch {}
+}
+
+function trackableExercises() {
+    return config.exercises.flatMap((exercise) => exercise.alternatives?.length
+        ? exercise.alternatives
+        : [exercise]);
+}
+
+function selectedExerciseFor(exercise) {
+    if (!exercise?.alternatives?.length) return exercise;
+    if (!sessionExerciseSelections.has(exercise.trackingId)) {
+        sessionExerciseSelections.set(
+            exercise.trackingId,
+            chooseAlternatingExercise(exercise.alternatives, progressHistory)
+        );
+    }
+    return sessionExerciseSelections.get(exercise.trackingId);
+}
+
+function currentExerciseName(exercise) {
+    return selectedExerciseFor(exercise)?.name ?? exercise?.name ?? '';
+}
+
+function currentExerciseNotes(exercise) {
+    const selected = selectedExerciseFor(exercise);
+    const recommendation = selected
+        ? recommendProgression(selected.progression, progressHistory, selected.trackingId, {
+            expectedSets: config.sets,
+            excludeSessionId: activeSessionId
+        })
+        : null;
+    return [exercise?.notes, recommendation ? `Empfohlen: ${recommendation.text}` : '']
+        .filter(Boolean)
+        .join('\n');
+}
+
+function renderProgressList() {
+    elements.progressList.replaceChildren();
+
+    for (const exercise of trackableExercises()) {
+        const summary = summarizeProgress(
+            exercise.progression,
+            progressHistory,
+            exercise.trackingId,
+            config.sets
+        );
+        const card = document.createElement('article');
+        card.className = 'progress-card';
+        card.innerHTML = `
+            <div class="progress-card-heading">
+                <strong></strong>
+                <span></span>
+            </div>
+            <p class="progress-last"></p>
+            <p class="progress-next"></p>
+            <div class="progress-recent" aria-label="Recent sessions"></div>`;
+        card.querySelector('strong').textContent = exercise.name;
+        card.querySelector('.progress-card-heading span').textContent = `${exercise.progression.minReps}–${exercise.progression.maxReps} Wdh.`;
+        card.querySelector('.progress-last').textContent = `Zuletzt: ${summary.last}`;
+        card.querySelector('.progress-next').textContent = `Nächstes Ziel: ${summary.recommendation.text}`;
+
+        const recent = card.querySelector('.progress-recent');
+        for (const session of summary.recent.slice(0, 4)) {
+            const item = document.createElement('span');
+            const date = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit' })
+                .format(new Date(session.date));
+            item.textContent = `${date} · ${session.reps.join('/')}`;
+            recent.append(item);
+        }
+        elements.progressList.append(card);
+    }
+}
+
+function activateExerciseLog(snapshot) {
+    if (!snapshot.exercise || !activeSessionId) return;
+    const selected = selectedExerciseFor(snapshot.exercise);
+    const profile = selected.progression;
+    const recommendation = recommendProgression(profile, progressHistory, selected.trackingId, {
+        expectedSets: config.sets,
+        excludeSessionId: activeSessionId
+    });
+    activeLogContext = {
+        sessionId: activeSessionId,
+        planName: config.planName,
+        trackingId: selected.trackingId,
+        exerciseName: selected.name,
+        set: snapshot.set,
+        profile,
+        recommendation
+    };
+
+    const existing = progressHistory.find((entry) => entry.sessionId === activeSessionId
+        && entry.trackingId === selected.trackingId
+        && entry.set === snapshot.set);
+    elements.progressionExercise.textContent = `${selected.name} · Satz ${snapshot.set} von ${snapshot.sets}`;
+    elements.progressionRecommendation.textContent = `Heute: ${recommendation.text}`;
+    const previousSessions = sessionsForExercise(progressHistory, selected.trackingId, {
+        excludeSessionId: activeSessionId
+    });
+    if (previousSessions[0]?.length) {
+        const previous = previousSessions[0];
+        elements.progressionLast.textContent = `Zuletzt: ${previous.map((entry) => entry.reps).join(' / ')} Wdh.`;
+    } else {
+        elements.progressionLast.textContent = 'Noch kein früherer Eintrag.';
+    }
+
+    elements.loadField.hidden = profile.type === 'variant';
+    elements.variantField.hidden = profile.type !== 'variant';
+    elements.repsLabel.textContent = profile.perSide ? 'Wdh. je Seite' : 'Wiederholungen';
+    elements.repsInput.min = String(profile.minReps);
+    elements.repsInput.max = String(Math.max(100, profile.maxReps));
+    elements.repsInput.value = String(existing?.reps ?? recommendation.reps);
+    elements.rirInput.value = String(existing?.rir ?? 2);
+
+    if (profile.type === 'variant') {
+        elements.variantInput.replaceChildren();
+        for (const variant of profile.variants) elements.variantInput.append(new Option(variant, variant));
+        elements.variantInput.value = existing?.variant ?? recommendation.variant ?? profile.initialVariant;
+    } else {
+        elements.loadUnit.textContent = profile.unit;
+        elements.loadInput.value = existing?.load ?? recommendation.load ?? '';
+        elements.loadInput.step = String(profile.increment);
+    }
+
+    elements.setLogButton.textContent = existing ? 'Aktualisieren' : 'Satz speichern';
+    elements.setLogMessage.textContent = existing ? 'Dieser Satz ist bereits gespeichert.' : '';
+    elements.progressionPanel.hidden = false;
+}
+
+function hideExerciseLog() {
+    activeLogContext = null;
+    elements.progressionPanel.hidden = true;
+    elements.setLogMessage.textContent = '';
 }
 
 function applyTheme() {
@@ -286,9 +616,9 @@ function announceCurrentPhase(delayMs = 0) {
     const key = `${snapshot.phase}:${snapshot.set}:${snapshot.round}`;
     if (key === lastAnnouncementKey) return;
 
-    const exerciseName = snapshot.exercise?.name ?? '';
+    const exerciseName = currentExerciseName(snapshot.exercise);
     const nextExerciseName = snapshot.phase === PHASES.PAUSE
-        ? config.exercises[0]?.name ?? ''
+        ? currentExerciseName(config.exercises[0])
         : exerciseName;
     const announcement = phaseAnnouncement({
         phase: snapshot.phase,
@@ -351,23 +681,23 @@ function updatePhaseDisplay() {
     if (mode === 'idle') {
         elements.status.textContent = 'READY';
         if (hasPlan) {
-            elements.nextExercise.textContent = `First: ${config.exercises[0].name}`;
+            elements.nextExercise.textContent = `First: ${currentExerciseName(config.exercises[0])}`;
             elements.nextExercise.hidden = false;
         }
     } else if (mode === 'complete') {
         elements.status.textContent = 'DONE';
     } else if (hasPlan && phase === PHASES.WORK) {
-        elements.status.textContent = exercise.name;
+        elements.status.textContent = currentExerciseName(exercise);
     } else {
         elements.status.textContent = phaseLabels[phase] ?? phase.toUpperCase();
         if (hasPlan && phase === PHASES.WARMUP) {
-            elements.nextExercise.textContent = `First after warm-up: ${config.exercises[0].name}`;
+            elements.nextExercise.textContent = `First after warm-up: ${currentExerciseName(config.exercises[0])}`;
             elements.nextExercise.hidden = false;
         } else if (hasPlan && phase === PHASES.REST) {
-            elements.nextExercise.textContent = `Next: ${exercise.name}`;
+            elements.nextExercise.textContent = `Next: ${currentExerciseName(exercise)}`;
             elements.nextExercise.hidden = false;
         } else if (hasPlan && phase === PHASES.PAUSE) {
-            elements.nextExercise.textContent = `Next set: ${config.exercises[0].name}`;
+            elements.nextExercise.textContent = `Next set: ${currentExerciseName(config.exercises[0])}`;
             elements.nextExercise.hidden = false;
         }
     }
@@ -375,8 +705,9 @@ function updatePhaseDisplay() {
     const noteExercise = mode === 'idle' || phase === PHASES.WARMUP || phase === PHASES.PAUSE
         ? config.exercises[0]
         : exercise;
-    if (mode !== 'complete' && phase !== PHASES.COOLDOWN && noteExercise?.notes?.trim()) {
-        elements.exerciseNote.textContent = noteExercise.notes.trim();
+    const notes = noteExercise ? currentExerciseNotes(noteExercise) : '';
+    if (mode !== 'complete' && phase !== PHASES.COOLDOWN && notes) {
+        elements.exerciseNote.textContent = notes;
         elements.exerciseNote.hidden = false;
     }
 
@@ -462,6 +793,7 @@ function syncExpiredPhases(now) {
         phaseEndsAt += sequence.duration;
     } while (now >= phaseEndsAt);
 
+    if (sequence.phase === PHASES.WORK) activateExerciseLog(sequence.snapshot());
     lastCountdownSecond = null;
     announceCurrentPhase(600);
     return false;
@@ -481,9 +813,16 @@ function tick() {
 function startTimer() {
     if (mode === 'running') return;
 
+    const startsNewSession = mode === 'idle' || mode === 'complete';
     if (mode === 'complete') {
         sequence.reset();
         remainingMs = sequence.duration;
+    }
+
+    if (startsNewSession) {
+        activeSessionId = createId();
+        sessionExerciseSelections = new Map();
+        hideExerciseLog();
     }
 
     const needsAudioUnlock = !audioUnlocked;
@@ -521,6 +860,9 @@ function stopTimer() {
     remainingMs = sequence.duration;
     lastCountdownSecond = null;
     lastAnnouncementKey = null;
+    activeSessionId = null;
+    sessionExerciseSelections = new Map();
+    hideExerciseLog();
     cancelSpeech();
     releaseWakeLock();
     elements.progress.value = 0;
@@ -550,10 +892,14 @@ function resetAfterPlanChange(message = '', { renderList = true } = {}) {
     mode = 'idle';
     remainingMs = sequence.duration;
     lastAnnouncementKey = null;
+    activeSessionId = null;
+    sessionExerciseSelections = new Map();
+    hideExerciseLog();
     cancelSpeech();
     saveActiveConfig();
     updateSettings();
     if (renderList) renderExerciseList();
+    renderProgressList();
     render();
     elements.timer.textContent = '00:00';
     elements.planMessage.textContent = message;
@@ -731,13 +1077,21 @@ function updateDeleteConfigurationButton() {
 
 function applyConfiguration(item) {
     if (!item || mode === 'running' || mode === 'paused') return;
-    const normalized = normalizeConfiguration({ ...defaultConfig, ...item, planName: item.name ?? item.planName });
+    const normalized = normalizeConfiguration({
+        ...defaultConfig,
+        ...item,
+        exercises: item.exercises ?? [],
+        planName: item.name ?? item.planName
+    });
     if (!normalized) return;
 
     for (const key of ['planName', 'warmupMs', 'workMs', 'restMs', 'pauseMs', 'cooldownMs', 'rounds', 'sets']) {
         config[key] = normalized[key];
     }
     config.exercises = normalized.exercises.map((exercise) => ({ ...exercise }));
+    activeSessionId = null;
+    sessionExerciseSelections = new Map();
+    hideExerciseLog();
     sequence.updateConfig(config);
     sequence.reset();
     mode = 'idle';
@@ -747,6 +1101,7 @@ function applyConfiguration(item) {
     saveActiveConfig();
     updateSettings();
     renderExerciseList();
+    renderProgressList();
     render();
     elements.timer.textContent = '00:00';
     elements.configurationMessage.textContent = `Loaded “${item.name}”.`;
@@ -840,6 +1195,47 @@ elements.settingButtons.forEach((button) => {
     bindRepeatingAction(button, () => {
         changeSetting(button.dataset.setting, Number(button.dataset.change));
     });
+});
+
+elements.setLogForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    if (!activeLogContext) return;
+
+    const reps = Number(elements.repsInput.value);
+    const rir = Number(elements.rirInput.value);
+    const load = activeLogContext.profile.type === 'load' && elements.loadInput.value !== ''
+        ? Number(elements.loadInput.value)
+        : null;
+    if (!Number.isInteger(reps) || reps < 1 || !Number.isInteger(rir) || rir < 0 || rir > 3) return;
+    if (load != null && (!Number.isFinite(load) || load < 0)) return;
+
+    const entry = {
+        id: createId(),
+        sessionId: activeLogContext.sessionId,
+        planName: activeLogContext.planName,
+        trackingId: activeLogContext.trackingId,
+        exerciseName: activeLogContext.exerciseName,
+        set: activeLogContext.set,
+        reps,
+        rir,
+        load,
+        variant: activeLogContext.profile.type === 'variant' ? elements.variantInput.value : '',
+        completedAt: new Date().toISOString()
+    };
+    const existingIndex = progressHistory.findIndex((item) => item.sessionId === entry.sessionId
+        && item.trackingId === entry.trackingId
+        && item.set === entry.set);
+    if (existingIndex >= 0) {
+        entry.id = progressHistory[existingIndex].id;
+        progressHistory[existingIndex] = entry;
+    } else {
+        progressHistory.push(entry);
+    }
+
+    saveProgressHistory();
+    renderProgressList();
+    elements.setLogButton.textContent = 'Aktualisieren';
+    elements.setLogMessage.textContent = 'Satz gespeichert.';
 });
 
 elements.primaryButton.addEventListener('click', () => {
@@ -937,10 +1333,13 @@ elements.addExerciseForm.addEventListener('submit', (event) => {
     if (!name) return;
     config.exercises.push({
         id: createId(),
+        trackingId: trackingIdFor(name),
         name,
         workMs: null,
         restMs: null,
-        notes: ''
+        notes: '',
+        progression: normalizeProgression(),
+        alternatives: []
     });
     elements.newExerciseName.value = '';
     resetAfterPlanChange(`Added “${name}”.`);
@@ -985,7 +1384,9 @@ elements.exportPlanButton.addEventListener('click', () => {
             cooldownMs: config.cooldownMs,
             rounds: config.rounds,
             sets: config.sets,
-            exercises: config.exercises.map(({ name, workMs, restMs, notes }) => ({ name, workMs, restMs, notes }))
+            exercises: config.exercises.map(({
+                trackingId, name, workMs, restMs, notes, progression, alternatives
+            }) => ({ trackingId, name, workMs, restMs, notes, progression, alternatives }))
         }
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1023,5 +1424,6 @@ updateCapabilityLabels();
 renderConfigurationOptions();
 updateSettings();
 renderExerciseList();
+renderProgressList();
 render();
 elements.timer.textContent = '00:00';

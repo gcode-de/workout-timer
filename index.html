@@ -409,6 +409,96 @@
         progress::-webkit-progress-value { background: var(--phase-color); transition: width .2s linear, background .35s ease; }
         progress::-moz-progress-bar { background: var(--phase-color); }
 
+        .progression-panel {
+            display: grid;
+            gap: 12px;
+            margin: -8px 0 22px;
+            padding: 15px;
+            border: 1px solid color-mix(in srgb, var(--phase-color) 28%, var(--border));
+            border-radius: 18px;
+            background: color-mix(in srgb, var(--surface-soft) 78%, transparent);
+            text-align: left;
+        }
+
+        .progression-heading {
+            display: grid;
+            gap: 3px;
+        }
+
+        .progression-heading strong { font-size: .92rem; }
+
+        .progression-recommendation {
+            color: var(--accent-soft);
+            font-size: .8rem;
+            font-weight: 720;
+        }
+
+        .progression-last,
+        .set-log-message {
+            margin: 0;
+            color: var(--subtle);
+            font-size: .7rem;
+            line-height: 1.4;
+        }
+
+        .set-log-form {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .set-log-field {
+            display: grid;
+            min-width: 0;
+            gap: 5px;
+            color: var(--subtle);
+            font-size: .63rem;
+            font-weight: 750;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        .set-log-field-wide { grid-column: span 2; }
+
+        .set-log-control {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .set-log-control span {
+            max-width: 92px;
+            color: var(--subtle);
+            font-size: .6rem;
+            font-weight: 650;
+            letter-spacing: 0;
+            line-height: 1.2;
+            text-transform: none;
+        }
+
+        .set-log-form input,
+        .set-log-form select {
+            width: 100%;
+            min-width: 0;
+            height: 42px;
+            padding: 0 9px;
+            border: 1px solid var(--border);
+            border-radius: 11px;
+            color: var(--text);
+            background: var(--secondary);
+            font: inherit;
+            font-size: .9rem;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .set-log-submit {
+            grid-column: 1 / -1;
+            min-height: 44px;
+            border-radius: 12px;
+            font-weight: 750;
+        }
+
         .controls {
             display: flex;
             justify-content: center;
@@ -792,6 +882,54 @@
             font-size: .75rem;
         }
 
+        .progress-list {
+            display: grid;
+            gap: 9px;
+        }
+
+        .progress-card {
+            display: grid;
+            gap: 6px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            background: var(--secondary);
+            text-align: left;
+        }
+
+        .progress-card-heading {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .progress-card-heading strong { font-size: .84rem; }
+        .progress-card-heading span { color: var(--subtle); font-size: .65rem; }
+
+        .progress-card p {
+            margin: 0;
+            font-size: .72rem;
+            line-height: 1.4;
+        }
+
+        .progress-next { color: var(--accent-soft); font-weight: 680; }
+        .progress-last { color: var(--muted); }
+
+        .progress-recent {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .progress-recent span {
+            padding: 3px 6px;
+            border-radius: 7px;
+            color: var(--subtle);
+            background: color-mix(in srgb, var(--surface) 56%, transparent);
+            font-size: .6rem;
+        }
+
         @media (max-width: 380px) {
             body { padding-inline: 14px; }
             .setting-grid { grid-template-columns: 1fr; }
@@ -800,6 +938,8 @@
             .configuration-save button { width: 100%; }
             .dialog-content { padding-inline: 20px; }
             .exercise-details { grid-template-columns: minmax(0, 1fr); }
+            .set-log-form { grid-template-columns: 1fr 1fr; }
+            .set-log-field-wide { grid-column: 1 / -1; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -918,6 +1058,41 @@
             <div id="exerciseNote" class="exercise-note" aria-live="polite" hidden></div>
             <div id="timer" role="timer" aria-live="off">00:00</div>
             <progress id="progress" max="1" value="0" aria-label="Interval progress"></progress>
+            <section id="progressionPanel" class="progression-panel" aria-label="Satz protokollieren" hidden>
+                <div class="progression-heading">
+                    <strong id="progressionExercise"></strong>
+                    <span id="progressionRecommendation" class="progression-recommendation"></span>
+                    <p id="progressionLast" class="progression-last"></p>
+                </div>
+                <form id="setLogForm" class="set-log-form">
+                    <label id="loadField" class="set-log-field set-log-field-wide">
+                        <span>Gewicht</span>
+                        <span class="set-log-control">
+                            <input id="loadInput" type="number" min="0" inputmode="decimal" aria-label="Verwendetes Gewicht">
+                            <span id="loadUnit"></span>
+                        </span>
+                    </label>
+                    <label id="variantField" class="set-log-field set-log-field-wide" hidden>
+                        <span>Variante</span>
+                        <select id="variantInput" aria-label="Übungsvariante"></select>
+                    </label>
+                    <label class="set-log-field">
+                        <span id="repsLabel">Wiederholungen</span>
+                        <input id="repsInput" type="number" min="1" step="1" inputmode="numeric" required>
+                    </label>
+                    <label class="set-log-field">
+                        <span>RIR</span>
+                        <select id="rirInput" aria-label="Wiederholungen in Reserve">
+                            <option value="3">3+</option>
+                            <option value="2" selected>2</option>
+                            <option value="1">1</option>
+                            <option value="0">0</option>
+                        </select>
+                    </label>
+                    <button id="setLogButton" class="set-log-submit" type="submit">Satz speichern</button>
+                </form>
+                <p id="setLogMessage" class="set-log-message" aria-live="polite"></p>
+            </section>
             <div class="controls">
                 <button id="primaryButton" class="control-button" type="button">
                     <span id="primaryIcon" aria-hidden="true">▶</span>
@@ -993,6 +1168,11 @@
                     </button>
                 </form>
                 <p id="planMessage" class="plan-message" aria-live="polite"></p>
+            </section>
+            <section class="settings-section" aria-labelledby="progressTitle">
+                <h3 id="progressTitle">Fortschritt</h3>
+                <p class="section-help">Die Empfehlung steigt erst, wenn alle Sätze sauber im Zielbereich liegen. RIR bezeichnet mögliche weitere Wiederholungen.</p>
+                <div id="progressList" class="progress-list"></div>
             </section>
             <section class="settings-section" aria-labelledby="configurationsTitle">
                 <h3 id="configurationsTitle">Configurations</h3>

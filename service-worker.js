@@ -1,9 +1,10 @@
-const CACHE_NAME = 'workout-timer-v14';
+const CACHE_NAME = 'workout-timer-v16';
 const APP_SHELL = [
     './',
     './index.html',
     './app.mjs',
     './timer-core.mjs',
+    './progression-core.mjs',
     './speech-controller.mjs',
     './manifest.json',
     './alarm.mp3',
