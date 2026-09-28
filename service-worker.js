@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-timer-v18';
+const CACHE_NAME = 'workout-timer-v19';
 const APP_SHELL = [
     './',
     './index.html',

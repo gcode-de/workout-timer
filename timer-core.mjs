@@ -56,6 +56,12 @@ export function formatDuration(milliseconds) {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+export function exerciseSpeechName(exercise) {
+    const speechName = typeof exercise?.speechName === 'string' ? exercise.speechName.trim() : '';
+    const visibleName = typeof exercise?.name === 'string' ? exercise.name.trim() : '';
+    return speechName || visibleName;
+}
+
 export function phaseAnnouncement({ phase, exerciseName = '', nextExerciseName = '' }) {
     if (phase === PHASES.WARMUP) {
         return nextExerciseName ? `Warm-up. First exercise: ${nextExerciseName}` : 'Warm-up';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
+import { exerciseSpeechName, formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
 
 const defaults = {
     warmupMs: 300_000,
@@ -16,6 +16,12 @@ test('formats durations without wrapping after nine minutes', () => {
     assert.equal(formatDuration(0), '00:00');
     assert.equal(formatDuration(20_000), '00:20');
     assert.equal(formatDuration(610_000), '10:10');
+});
+
+test('uses a voice-friendly exercise name when available', () => {
+    assert.equal(exerciseSpeechName({ name: 'Latzug', speechName: 'Lat pulldown' }), 'Lat pulldown');
+    assert.equal(exerciseSpeechName({ name: 'Liegestütze', speechName: '' }), 'Liegestütze');
+    assert.equal(exerciseSpeechName({ name: 'Step-ups' }), 'Step-ups');
 });
 
 test('builds concise voice announcements for plans and interval mode', () => {

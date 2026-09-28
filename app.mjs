@@ -1,4 +1,4 @@
-import { formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
+import { exerciseSpeechName, formatDuration, phaseAnnouncement, PHASES, WorkoutSequence } from './timer-core.mjs';
 import { SpeechController } from './speech-controller.mjs';
 import {
     chooseAlternatingExercise,
@@ -11,6 +11,15 @@ import {
 const ACTIVE_CONFIG_KEY = 'workoutTimerActiveConfig';
 const CONFIGURATIONS_KEY = 'workoutTimerConfigurations';
 const PROGRESS_HISTORY_KEY = 'workoutTimerProgressHistory';
+const DEFAULT_SPEECH_NAMES = Object.freeze({
+    'kraft-jo-lat-pulldown': 'Lat pulldown',
+    'kraft-jo-step-ups': 'Step-ups',
+    'kraft-jo-push-ups': 'Push-ups',
+    'kraft-jo-rdl': 'Romanian deadlift',
+    'kraft-jo-cable-row': 'Cable row',
+    'kraft-jo-shoulder-press': 'Shoulder press',
+    'kraft-jo-single-leg-hip-thrust': 'Single-leg hip thrusts'
+});
 const kraftJoExercises = [
     {
         trackingId: 'kraft-jo-lat-pulldown',
@@ -160,13 +169,20 @@ function normalizeProgression(value = {}) {
     return progression;
 }
 
+function normalizeSpeechName(value, trackingId) {
+    if (typeof value === 'string') return value.trim().slice(0, 80);
+    return DEFAULT_SPEECH_NAMES[trackingId] ?? '';
+}
+
 function normalizeAlternative(alternative) {
     const name = String(alternative?.name ?? 'Alternative').trim();
+    const trackingId = typeof alternative?.trackingId === 'string' && alternative.trackingId
+        ? alternative.trackingId
+        : trackingIdFor(name);
     return {
-        trackingId: typeof alternative?.trackingId === 'string' && alternative.trackingId
-            ? alternative.trackingId
-            : trackingIdFor(name),
+        trackingId,
         name,
+        speechName: normalizeSpeechName(alternative?.speechName, trackingId),
         progression: normalizeProgression(alternative?.progression)
     };
 }
@@ -176,6 +192,7 @@ function isValidExercise(exercise) {
     return exercise
         && typeof exercise.name === 'string'
         && Boolean(exercise.name.trim())
+        && (exercise.speechName == null || typeof exercise.speechName === 'string')
         && validOptionalDuration(exercise.workMs)
         && validOptionalDuration(exercise.restMs)
         && (exercise.notes == null || typeof exercise.notes === 'string');
@@ -183,20 +200,24 @@ function isValidExercise(exercise) {
 
 function normalizeExercises(exercises = []) {
     if (!Array.isArray(exercises)) return [];
-    return exercises.map((exercise) => ({
-        id: typeof exercise.id === 'string' && exercise.id ? exercise.id : createId(),
-        trackingId: typeof exercise.trackingId === 'string' && exercise.trackingId
+    return exercises.map((exercise) => {
+        const trackingId = typeof exercise.trackingId === 'string' && exercise.trackingId
             ? exercise.trackingId
-            : trackingIdFor(exercise.name),
-        name: exercise.name.trim(),
-        workMs: exercise.workMs ?? null,
-        restMs: exercise.restMs ?? null,
-        notes: typeof exercise.notes === 'string' ? exercise.notes.slice(0, 500) : '',
-        progression: normalizeProgression(exercise.progression),
-        alternatives: Array.isArray(exercise.alternatives)
-            ? exercise.alternatives.map(normalizeAlternative)
-            : []
-    }));
+            : trackingIdFor(exercise.name);
+        return {
+            id: typeof exercise.id === 'string' && exercise.id ? exercise.id : createId(),
+            trackingId,
+            name: exercise.name.trim(),
+            speechName: normalizeSpeechName(exercise.speechName, trackingId),
+            workMs: exercise.workMs ?? null,
+            restMs: exercise.restMs ?? null,
+            notes: typeof exercise.notes === 'string' ? exercise.notes.slice(0, 500) : '',
+            progression: normalizeProgression(exercise.progression),
+            alternatives: Array.isArray(exercise.alternatives)
+                ? exercise.alternatives.map(normalizeAlternative)
+                : []
+        };
+    });
 }
 
 function isValidConfiguration(value) {
@@ -424,6 +445,11 @@ function currentExerciseName(exercise) {
     return selectedExerciseFor(exercise)?.name ?? exercise?.name ?? '';
 }
 
+function currentExerciseSpeechName(exercise) {
+    const selected = selectedExerciseFor(exercise);
+    return exerciseSpeechName(selected) || exerciseSpeechName(exercise);
+}
+
 function currentExerciseNotes(exercise) {
     const selected = selectedExerciseFor(exercise);
     const recommendation = selected
@@ -623,9 +649,9 @@ function announceCurrentPhase(delayMs = 0) {
     const key = `${snapshot.phase}:${snapshot.set}:${snapshot.round}`;
     if (key === lastAnnouncementKey) return;
 
-    const exerciseName = currentExerciseName(snapshot.exercise);
+    const exerciseName = currentExerciseSpeechName(snapshot.exercise);
     const nextExerciseName = snapshot.phase === PHASES.PAUSE
-        ? currentExerciseName(config.exerciseOrder === 'straight' ? snapshot.exercise : config.exercises[0])
+        ? currentExerciseSpeechName(config.exerciseOrder === 'straight' ? snapshot.exercise : config.exercises[0])
         : exerciseName;
     const announcement = phaseAnnouncement({
         phase: snapshot.phase,
@@ -1008,13 +1034,19 @@ function renderExerciseList() {
                 </div>
             </div>
             <label class="exercise-notes-label">
+                <span>Voice name <small>(optional)</small></span>
+                <input class="exercise-speech-name" data-plan-control type="text" maxlength="80" placeholder="e.g. Lat pulldown" aria-label="Voice name for exercise ${index + 1}">
+            </label>
+            <label class="exercise-notes-label">
                 <span>Notes</span>
                 <textarea class="exercise-notes" data-plan-control rows="2" maxlength="500" placeholder="Weight, reps, technique cues…" aria-label="Notes for exercise ${index + 1}"></textarea>
             </label>`;
 
         const nameInput = card.querySelector('.exercise-name');
+        const speechNameInput = card.querySelector('.exercise-speech-name');
         const notesInput = card.querySelector('.exercise-notes');
         nameInput.value = exercise.name;
+        speechNameInput.value = exercise.speechName;
         notesInput.value = exercise.notes;
 
         nameInput.addEventListener('change', () => {
@@ -1025,6 +1057,11 @@ function renderExerciseList() {
             }
             exercise.name = name;
             resetAfterPlanChange('Exercise updated.', { renderList: false });
+        });
+
+        speechNameInput.addEventListener('input', () => {
+            exercise.speechName = speechNameInput.value.trim().slice(0, 80);
+            saveActiveConfig();
         });
 
         notesInput.addEventListener('input', () => {
@@ -1364,6 +1401,7 @@ elements.addExerciseForm.addEventListener('submit', (event) => {
         id: createId(),
         trackingId: trackingIdFor(name),
         name,
+        speechName: '',
         workMs: null,
         restMs: null,
         notes: '',
@@ -1415,8 +1453,8 @@ elements.exportPlanButton.addEventListener('click', () => {
             rounds: config.rounds,
             sets: config.sets,
             exercises: config.exercises.map(({
-                trackingId, name, workMs, restMs, notes, progression, alternatives
-            }) => ({ trackingId, name, workMs, restMs, notes, progression, alternatives }))
+                trackingId, name, speechName, workMs, restMs, notes, progression, alternatives
+            }) => ({ trackingId, name, speechName, workMs, restMs, notes, progression, alternatives }))
         }
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
