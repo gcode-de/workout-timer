@@ -59,6 +59,35 @@ test('runs warm-up once, starts with work and rests only between rounds', () => 
     );
 });
 
+test('starts directly with work when warm-up is disabled', () => {
+    const sequence = new WorkoutSequence({ ...defaults, warmupMs: 0 });
+
+    assert.deepEqual(sequence.snapshot(), {
+        phase: PHASES.WORK,
+        round: 1,
+        set: 1,
+        duration: defaults.workMs,
+        rounds: defaults.rounds,
+        sets: defaults.sets,
+        exercise: null
+    });
+});
+
+test('completes directly after the last work interval when cool-down is disabled', () => {
+    const sequence = new WorkoutSequence({
+        ...defaults,
+        warmupMs: 0,
+        cooldownMs: 0,
+        rounds: 1,
+        sets: 1
+    });
+
+    assert.equal(sequence.snapshot().phase, PHASES.WORK);
+    sequence.next();
+    assert.equal(sequence.snapshot().phase, PHASES.COMPLETE);
+    assert.equal(sequence.snapshot().duration, 0);
+});
+
 test('starts a fresh set after the pause', () => {
     const sequence = new WorkoutSequence({ ...defaults, rounds: 1, sets: 2 });
 

@@ -15,6 +15,12 @@ function assertDuration(value, name) {
     }
 }
 
+function assertOptionalPhaseDuration(value, name) {
+    if (!Number.isFinite(value) || value < 0) {
+        throw new RangeError(`${name} must be zero or a positive duration`);
+    }
+}
+
 function assertCount(value, name) {
     if (!Number.isInteger(value) || value < 1) {
         throw new RangeError(`${name} must be a positive integer`);
@@ -73,11 +79,11 @@ export class WorkoutSequence {
     }
 
     updateConfig({ warmupMs, workMs, restMs, pauseMs, cooldownMs, rounds, sets, exercises = [] }) {
-        assertDuration(warmupMs, 'warmupMs');
+        assertOptionalPhaseDuration(warmupMs, 'warmupMs');
         assertDuration(workMs, 'workMs');
         assertDuration(restMs, 'restMs');
         assertDuration(pauseMs, 'pauseMs');
-        assertDuration(cooldownMs, 'cooldownMs');
+        assertOptionalPhaseDuration(cooldownMs, 'cooldownMs');
         assertCount(rounds, 'rounds');
         assertCount(sets, 'sets');
 
@@ -95,7 +101,7 @@ export class WorkoutSequence {
     }
 
     reset() {
-        this.phase = PHASES.WARMUP;
+        this.phase = this.config.warmupMs === 0 ? PHASES.WORK : PHASES.WARMUP;
         this.round = 1;
         this.set = 1;
     }
@@ -123,7 +129,7 @@ export class WorkoutSequence {
         } else if (this.phase === PHASES.WORK && this.set < this.config.sets) {
             this.phase = PHASES.PAUSE;
         } else if (this.phase === PHASES.WORK) {
-            this.phase = PHASES.COOLDOWN;
+            this.phase = this.config.cooldownMs === 0 ? PHASES.COMPLETE : PHASES.COOLDOWN;
         } else if (this.phase === PHASES.PAUSE) {
             this.set += 1;
             this.round = 1;

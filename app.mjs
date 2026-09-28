@@ -201,7 +201,8 @@ function normalizeExercises(exercises = []) {
 function isValidConfiguration(value) {
     return value
         && ['workMs', 'restMs', 'pauseMs'].every((key) => Number.isFinite(value[key]) && value[key] >= 1_000)
-        && ['warmupMs', 'cooldownMs'].every((key) => value[key] == null || (Number.isFinite(value[key]) && value[key] >= 1_000))
+        && (value.warmupMs == null || (Number.isFinite(value.warmupMs) && value.warmupMs >= 0))
+        && (value.cooldownMs == null || (Number.isFinite(value.cooldownMs) && value.cooldownMs >= 0))
         && ['rounds', 'sets'].every((key) => Number.isInteger(value[key]) && value[key] >= 1)
         && (value.exercises == null || (Array.isArray(value.exercises) && value.exercises.every(isValidExercise)));
 }
@@ -823,6 +824,7 @@ function startTimer() {
         activeSessionId = createId();
         sessionExerciseSelections = new Map();
         hideExerciseLog();
+        if (sequence.phase === PHASES.WORK) activateExerciseLog(sequence.snapshot());
     }
 
     const needsAudioUnlock = !audioUnlocked;
@@ -873,7 +875,11 @@ function stopTimer() {
 function changeSetting(name, amount) {
     if (mode !== 'idle') return;
 
-    const minimum = name === 'rounds' || name === 'sets' ? 1 : amount < 0 ? Math.abs(amount) : 1_000;
+    const minimum = name === 'warmupMs' || name === 'cooldownMs'
+        ? 0
+        : name === 'rounds' || name === 'sets'
+            ? 1
+            : amount < 0 ? Math.abs(amount) : 1_000;
     const nextValue = Math.max(minimum, config[name] + amount);
     if (nextValue === config[name]) return;
 
